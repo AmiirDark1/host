@@ -1,4 +1,4 @@
-به<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="UTF-8">
@@ -132,8 +132,8 @@
     }
 
     .btn-sm {
-      padding: 8px 16px;
-      font-size: 13px;
+      padding: 6px 12px;
+      font-size: 12px;
     }
 
     .btn:disabled {
@@ -514,9 +514,9 @@
       background: white;
       border-radius: 20px;
       padding: 30px;
-      max-width: 600px;
-      width: 90%;
-      max-height: 80vh;
+      max-width: 900px;
+      width: 95%;
+      max-height: 85vh;
       overflow-y: auto;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
     }
@@ -532,6 +532,195 @@
       gap: 10px;
       justify-content: center;
       margin-top: 20px;
+    }
+
+    /* File Manager Styles */
+    .fm-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .fm-path {
+      background: #f0f0f0;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      direction: ltr;
+      text-align: left;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .fm-breadcrumb {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 15px;
+      font-size: 13px;
+    }
+
+    .fm-breadcrumb a {
+      color: #3498db;
+      text-decoration: none;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+
+    .fm-breadcrumb a:hover {
+      background: #f0f0f0;
+    }
+
+    .fm-breadcrumb .separator {
+      color: #999;
+    }
+
+    .fm-toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 15px;
+    }
+
+    .fm-file-list {
+      border: 1px solid #e1e1e1;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .fm-file-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 15px;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-size: 13px;
+    }
+
+    .fm-file-item:hover {
+      background: #f8f9fa;
+    }
+
+    .fm-file-item .icon {
+      margin-left: 10px;
+      font-size: 18px;
+      width: 24px;
+      text-align: center;
+    }
+
+    .fm-file-item .name {
+      flex: 1;
+      direction: ltr;
+      text-align: left;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+
+    .fm-file-item .size {
+      margin: 0 15px;
+      color: #999;
+      min-width: 60px;
+      text-align: right;
+      font-size: 11px;
+    }
+
+    .fm-file-item .perms {
+      margin: 0 10px;
+      color: #999;
+      font-size: 11px;
+      direction: ltr;
+      min-width: 50px;
+    }
+
+    .fm-file-item .actions {
+      display: flex;
+      gap: 5px;
+    }
+
+    .fm-file-item .actions button {
+      padding: 2px 8px;
+      font-size: 11px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .fm-editor {
+      margin-top: 15px;
+      display: none;
+    }
+
+    .fm-editor.show {
+      display: block;
+    }
+
+    .fm-editor textarea {
+      width: 100%;
+      min-height: 300px;
+      padding: 15px;
+      border: 2px solid #e1e1e1;
+      border-radius: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      direction: ltr;
+      text-align: left;
+      resize: vertical;
+    }
+
+    .fm-editor textarea:focus {
+      outline: none;
+      border-color: #764ba2;
+    }
+
+    .fm-editor .editor-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .fm-editor .editor-toolbar .file-path {
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: #666;
+      direction: ltr;
+    }
+
+    .fm-upload-area {
+      border: 2px dashed #ccc;
+      border-radius: 10px;
+      padding: 30px;
+      text-align: center;
+      margin-top: 15px;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: none;
+    }
+
+    .fm-upload-area.show {
+      display: block;
+    }
+
+    .fm-upload-area:hover {
+      border-color: #764ba2;
+      background: #f8f9fa;
+    }
+
+    .fm-upload-area input[type="file"] {
+      display: none;
+    }
+
+    .fm-status {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #666;
     }
 
     /* Responsive */
@@ -555,6 +744,11 @@
       }
       .server-ip-box .ip-address {
         font-size: 18px;
+      }
+      .modal-content {
+        padding: 15px;
+        max-width: 100%;
+        max-height: 90vh;
       }
     }
   </style>
@@ -672,12 +866,13 @@
                 <th>دامنه</th>
                 <th>وضعیت</th>
                 <th>آدرس</th>
+                <th>فایل‌ها</th>
                 <th>عملیات</th>
               </tr>
             </thead>
             <tbody id="instancesBody">
               <tr>
-                <td colspan="6" class="empty-state">
+                <td colspan="7" class="empty-state">
                   <div class="icon">📦</div>
                   <p>هنوز کانتینری ایجاد نشده است</p>
                   <p style="font-size:12px;color:#ccc;">برای شروع، یک کانتینر جدید ایجاد کنید</p>
@@ -690,10 +885,71 @@
     </div>
   </div>
 
+  <!-- File Manager Modal -->
+  <div id="fileManagerModal" class="modal">
+    <div class="modal-content">
+      <h3>📂 مدیریت فایل‌ها</h3>
+      <div style="text-align:center;margin-bottom:15px;color:#666;font-size:13px;">
+        کانتینر: <strong id="fmInstanceName"></strong> | 
+        نوع: <strong id="fmContainerType"></strong>
+      </div>
+      
+      <div class="fm-header">
+        <div class="fm-path" id="fmCurrentPath">/var/www/html</div>
+        <div>
+          <button onclick="fmRefresh()" class="btn btn-sm btn-info">🔄</button>
+          <button onclick="fmGoUp()" class="btn btn-sm btn-warning">⬆ بالا</button>
+        </div>
+      </div>
+
+      <div class="fm-breadcrumb" id="fmBreadcrumb"></div>
+
+      <div class="fm-toolbar">
+        <button onclick="fmNewFile()" class="btn btn-sm btn-success">📄 فایل جدید</button>
+        <button onclick="fmNewDir()" class="btn btn-sm btn-info">📁 پوشه جدید</button>
+        <button onclick="fmToggleUpload()" class="btn btn-sm btn-warning">📤 آپلود</button>
+        <button onclick="fmClose()" class="btn btn-sm btn-danger">✕ بستن</button>
+      </div>
+
+      <!-- Upload Area -->
+      <div class="fm-upload-area" id="fmUploadArea">
+        <div style="font-size:24px;margin-bottom:10px;">📤</div>
+        <p>فایل را انتخاب کنید یا اینجا بکشید و رها کنید</p>
+        <input type="file" id="fmFileInput" onchange="fmUploadFile(event)">
+        <div id="fmUploadStatus" class="fm-status"></div>
+      </div>
+
+      <!-- File List -->
+      <div class="fm-file-list" id="fmFileList">
+        <div style="text-align:center;padding:30px;color:#999;">در حال بارگذاری...</div>
+      </div>
+
+      <!-- File Editor -->
+      <div class="fm-editor" id="fmEditor">
+        <div class="editor-toolbar">
+          <span class="file-path" id="fmEditorPath"></span>
+          <div>
+            <button onclick="fmSaveFile()" class="btn btn-sm btn-success">💾 ذخیره</button>
+            <button onclick="fmCloseEditor()" class="btn btn-sm btn-danger">✕ بستن</button>
+          </div>
+        </div>
+        <textarea id="fmEditorContent" spellcheck="false"></textarea>
+      </div>
+    </div>
+  </div>
+
   <script>
     const API_BASE = '/api';
     let currentUser = null;
     let bulkCount = 0;
+    
+    // File Manager State
+    let fmState = {
+      instanceName: '',
+      containerType: 'wp',
+      currentPath: '/var/www/html',
+      editingFile: null,
+    };
 
     // Login
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -740,6 +996,21 @@
       alert.textContent = msg;
       alert.className = `alert alert-${type} show`;
       setTimeout(() => alert.classList.remove('show'), 5000);
+    }
+
+    function showAlertInModal(msg, type = 'success') {
+      // Show alert inside the file manager modal
+      const container = document.querySelector('#fileManagerModal .modal-content');
+      let alertEl = document.getElementById('fmAlert');
+      if (!alertEl) {
+        alertEl = document.createElement('div');
+        alertEl.id = 'fmAlert';
+        alertEl.className = 'alert';
+        container.insertBefore(alertEl, container.querySelector('.fm-header'));
+      }
+      alertEl.textContent = msg;
+      alertEl.className = `alert alert-${type} show`;
+      setTimeout(() => { if(alertEl) alertEl.classList.remove('show'); }, 3000);
     }
 
     function logout() {
@@ -797,7 +1068,6 @@
         navigator.clipboard.writeText(ip).then(() => {
           showAlert('✅ آی‌پی سرور کپی شد', 'success');
         }).catch(() => {
-          // Fallback
           const textarea = document.createElement('textarea');
           textarea.value = ip;
           document.body.appendChild(textarea);
@@ -819,10 +1089,8 @@
       document.getElementById('userName').textContent = user.name || user.username;
       document.getElementById('userRole').textContent = user.role === 'admin' ? 'مدیر' : 'کاربر';
 
-      // Get server IP
       fetchServerIp();
 
-      // Show admin stats if admin
       if (user.role === 'admin') {
         document.getElementById('adminStats').style.display = 'block';
         loadStats();
@@ -848,7 +1116,6 @@
       }
     }
 
-    // Show domain input for bulk creation
     function showBulkDomainInput(count) {
       bulkCount = count;
       const container = document.getElementById('bulkDomainContainer');
@@ -980,7 +1247,7 @@
         if (instances.length === 0) {
           tbody.innerHTML = `
             <tr>
-              <td colspan="6" class="empty-state">
+              <td colspan="7" class="empty-state">
                 <div class="icon">📦</div>
                 <p>هنوز کانتینری ایجاد نشده است</p>
                 <p style="font-size:12px;color:#ccc;">برای شروع، یک کانتینر جدید ایجاد کنید</p>
@@ -1005,6 +1272,9 @@
               <td><span class="status-badge ${statusClass}">${statusText}</span></td>
               <td>
                 ${inst.status === 'running' && inst.url && inst.url !== '-' ? `<a href="${inst.url}" target="_blank" class="instance-link">🔗 مشاهده</a>` : '-'}
+              </td>
+              <td>
+                <button onclick="openFileManager('${inst.instanceName}', 'wp')" class="btn btn-sm btn-info" ${inst.status !== 'running' ? 'disabled' : ''}>📂 فایل‌ها</button>
               </td>
               <td>
                 <button onclick="deleteInstance('${inst.instanceName}')" class="btn btn-sm btn-danger">🗑 حذف</button>
@@ -1043,6 +1313,397 @@
         showAlert(`خطا: ${err.message}`, 'error');
       }
     }
+
+    // ========== FILE MANAGER ==========
+
+    function openFileManager(instanceName, containerType = 'wp') {
+      fmState.instanceName = instanceName;
+      fmState.containerType = containerType;
+      fmState.currentPath = '/var/www/html';
+      fmState.editingFile = null;
+      
+      document.getElementById('fmInstanceName').textContent = instanceName;
+      document.getElementById('fmContainerType').textContent = containerType === 'wp' ? 'WordPress' : 'Database';
+      document.getElementById('fmCurrentPath').textContent = fmState.currentPath;
+      
+      document.getElementById('fileManagerModal').classList.add('show');
+      document.getElementById('fmEditor').classList.remove('show');
+      document.getElementById('fmUploadArea').classList.remove('show');
+      
+      fmLoadFileList();
+    }
+
+    function fmClose() {
+      document.getElementById('fileManagerModal').classList.remove('show');
+      document.getElementById('fmEditor').classList.remove('show');
+      document.getElementById('fmUploadArea').classList.remove('show');
+    }
+
+    function fmGoUp() {
+      const path = fmState.currentPath;
+      if (path === '/') return;
+      const parent = path.substring(0, path.lastIndexOf('/'));
+      fmState.currentPath = parent || '/';
+      document.getElementById('fmCurrentPath').textContent = fmState.currentPath;
+      fmLoadFileList();
+    }
+
+    function fmRefresh() {
+      fmLoadFileList();
+    }
+
+    function fmNavigateTo(path) {
+      fmState.currentPath = path;
+      document.getElementById('fmCurrentPath').textContent = path;
+      fmLoadFileList();
+    }
+
+    async function fmLoadFileList() {
+      const listEl = document.getElementById('fmFileList');
+      listEl.innerHTML = '<div style="text-align:center;padding:30px;color:#999;"><span class="loading"></span> در حال بارگذاری...</div>';
+      
+      document.getElementById('fmEditor').classList.remove('show');
+      document.getElementById('fmUploadArea').classList.remove('show');
+
+      try {
+        const path = encodeURIComponent(fmState.currentPath);
+        const res = await apiCall(`/filemanager/list?instanceName=${fmState.instanceName}&containerType=${fmState.containerType}&path=${path}`);
+        
+        if (!res.ok) {
+          const err = await res.json();
+          listEl.innerHTML = `<div style="text-align:center;padding:30px;color:red;">خطا: ${err.error}</div>`;
+          return;
+        }
+
+        const data = await res.json();
+        
+        if (!data.success) {
+          listEl.innerHTML = `<div style="text-align:center;padding:30px;color:red;">خطا: ${data.error}</div>`;
+          return;
+        }
+
+        // Parse the ls -la output
+        const lines = data.output.split('\n').filter(line => line.trim());
+        let files = [];
+        
+        for (const line of lines) {
+          // Skip total line
+          if (line.startsWith('total ')) continue;
+          
+          // Parse ls -la output: permissions links owner group size month day time name
+          const parts = line.match(/^([drwxlst\-]{10})\s+(\d+)\s+(\S+)\s+(\S+)\s+(\d+)\s+(\w+\s+\d+\s+[\d:]+)\s+(.+)$/);
+          if (!parts) continue;
+          
+          const perms = parts[1];
+          const size = parts[5];
+          const name = parts[7];
+          
+          if (name === '.' || name === '..') continue;
+          
+          const isDir = perms.startsWith('d');
+          const isLink = perms.startsWith('l');
+          
+          files.push({ name, perms, size, isDir, isLink });
+        }
+
+        // Update breadcrumb
+        fmUpdateBreadcrumb();
+
+        if (files.length === 0) {
+          listEl.innerHTML = '<div style="text-align:center;padding:30px;color:#999;">📂 پوشه خالی است</div>';
+          return;
+        }
+
+        let html = '';
+        // Sort: directories first, then files, alphabetically
+        files.sort((a, b) => {
+          if (a.isDir && !b.isDir) return -1;
+          if (!a.isDir && b.isDir) return 1;
+          return a.name.localeCompare(b.name);
+        });
+
+        for (const file of files) {
+          const icon = file.isDir ? '📁' : (file.isLink ? '🔗' : '📄');
+          const sizeStr = file.isDir ? '-' : fmFormatSize(parseInt(file.size));
+          const isWpConfig = file.name === 'wp-config.php' || file.name.endsWith('.php') || file.name.endsWith('.html') || file.name.endsWith('.css') || file.name.endsWith('.js');
+          
+          html += `
+            <div class="fm-file-item" ondblclick="${file.isDir ? `fmNavigateTo('${fmState.currentPath}/${file.name}'.replace(/\\/+/g, '/'))` : `fmEditFile('${file.name}')`}">
+              <span class="icon">${icon}</span>
+              <span class="name">${file.name}</span>
+              <span class="size">${sizeStr}</span>
+              <span class="perms">${file.perms}</span>
+              <div class="actions">
+                ${file.isDir ? `<button onclick="fmNavigateTo('${fmState.currentPath}/${file.name}'.replace(/\\/+/g, '/'))" style="background:#3498db;color:white;" title="ورود به پوشه">📂</button>` : `<button onclick="fmEditFile('${file.name}')" style="background:#27ae60;color:white;" title="ویرایش فایل">✏️</button>`}
+                <button onclick="fmDeleteItem('${file.name}', ${file.isDir})" style="background:#e74c3c;color:white;" title="حذف">🗑</button>
+              </div>
+            </div>
+          `;
+        }
+
+        listEl.innerHTML = html;
+      } catch (err) {
+        document.getElementById('fmFileList').innerHTML = `<div style="text-align:center;padding:30px;color:red;">خطا: ${err.message}</div>`;
+      }
+    }
+
+    function fmUpdateBreadcrumb() {
+      const breadcrumb = document.getElementById('fmBreadcrumb');
+      const parts = fmState.currentPath.split('/').filter(p => p);
+      let html = `<a onclick="fmNavigateTo('/')">🏠 ریشه</a>`;
+      let currentPath = '';
+      
+      for (const part of parts) {
+        currentPath += '/' + part;
+        html += `<span class="separator">/</span><a onclick="fmNavigateTo('${currentPath}')">${part}</a>`;
+      }
+      
+      breadcrumb.innerHTML = html;
+    }
+
+    function fmFormatSize(bytes) {
+      if (bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    async function fmEditFile(fileName) {
+      const filePath = fmState.currentPath === '/' ? `/${fileName}` : `${fmState.currentPath}/${fileName}`;
+      
+      const editor = document.getElementById('fmEditor');
+      const editorPath = document.getElementById('fmEditorPath');
+      const editorContent = document.getElementById('fmEditorContent');
+      
+      editorPath.textContent = `${fmState.instanceName}:${filePath}`;
+      editorContent.value = 'در حال بارگذاری...';
+      editor.classList.add('show');
+
+      try {
+        const encodedPath = encodeURIComponent(filePath);
+        const res = await apiCall(`/filemanager/read?instanceName=${fmState.instanceName}&containerType=${fmState.containerType}&filePath=${encodedPath}`);
+        
+        if (!res.ok) {
+          const err = await res.json();
+          editorContent.value = `خطا در خواندن فایل: ${err.error}`;
+          return;
+        }
+
+        const data = await res.json();
+        if (!data.success) {
+          editorContent.value = `خطا: ${data.error}`;
+          return;
+        }
+
+        // Clean the content from terminal escape sequences
+        let content = data.content;
+        // Remove non-printable characters except newlines
+        content = content.replace(/[^\x20-\x7E\n]/g, '');
+        // Remove the command echo from shell
+        content = content.trim();
+        
+        editorContent.value = content;
+        fmState.editingFile = filePath;
+        
+        showAlertInModal(`✅ فایل ${fileName} بارگذاری شد`, 'success');
+      } catch (err) {
+        editorContent.value = `خطا: ${err.message}`;
+      }
+    }
+
+    async function fmSaveFile() {
+      if (!fmState.editingFile) {
+        showAlertInModal('لطفا ابتدا یک فایل را باز کنید', 'error');
+        return;
+      }
+
+      const content = document.getElementById('fmEditorContent').value;
+      
+      try {
+        const res = await apiCall('/filemanager/write', {
+          method: 'POST',
+          body: JSON.stringify({
+            instanceName: fmState.instanceName,
+            containerType: fmState.containerType,
+            filePath: fmState.editingFile,
+            content: content
+          })
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          showAlertInModal(`خطا: ${err.error}`, 'error');
+          return;
+        }
+
+        const data = await res.json();
+        if (data.success) {
+          showAlertInModal('✅ فایل ذخیره شد', 'success');
+        } else {
+          showAlertInModal(`خطا: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        showAlertInModal(`خطا: ${err.message}`, 'error');
+      }
+    }
+
+    function fmCloseEditor() {
+      document.getElementById('fmEditor').classList.remove('show');
+      fmState.editingFile = null;
+    }
+
+    async function fmDeleteItem(name, isDir) {
+      const path = fmState.currentPath === '/' ? `/${name}` : `${fmState.currentPath}/${name}`;
+      const type = isDir ? 'پوشه' : 'فایل';
+      
+      if (!confirm(`آیا از حذف ${type} "${name}" اطمینان دارید؟`)) return;
+
+      try {
+        const res = await apiCall('/filemanager/delete', {
+          method: 'DELETE',
+          body: JSON.stringify({
+            instanceName: fmState.instanceName,
+            containerType: fmState.containerType,
+            filePath: path
+          })
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          showAlertInModal(`خطا: ${err.error}`, 'error');
+          return;
+        }
+
+        const data = await res.json();
+        if (data.success) {
+          showAlertInModal(`✅ ${type} "${name}" حذف شد`, 'success');
+          fmLoadFileList();
+        } else {
+          showAlertInModal(`خطا: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        showAlertInModal(`خطا: ${err.message}`, 'error');
+      }
+    }
+
+    function fmNewFile() {
+      const name = prompt('نام فایل جدید را وارد کنید (مثلا: test.php):');
+      if (!name) return;
+      
+      const path = fmState.currentPath === '/' ? `/${name}` : `${fmState.currentPath}/${name}`;
+      
+      // Create empty file by writing empty content
+      apiCall('/filemanager/write', {
+        method: 'POST',
+        body: JSON.stringify({
+          instanceName: fmState.instanceName,
+          containerType: fmState.containerType,
+          filePath: path,
+          content: '// New file created\n'
+        })
+      }).then(async res => {
+        if (!res.ok) {
+          const err = await res.json();
+          showAlertInModal(`خطا: ${err.error}`, 'error');
+          return;
+        }
+        const data = await res.json();
+        if (data.success) {
+          showAlertInModal(`✅ فایل "${name}" ایجاد شد`, 'success');
+          fmLoadFileList();
+        }
+      }).catch(err => {
+        showAlertInModal(`خطا: ${err.message}`, 'error');
+      });
+    }
+
+    function fmNewDir() {
+      const name = prompt('نام پوشه جدید را وارد کنید:');
+      if (!name) return;
+      
+      const path = fmState.currentPath === '/' ? `/${name}` : `${fmState.currentPath}/${name}`;
+      
+      apiCall('/filemanager/mkdir', {
+        method: 'POST',
+        body: JSON.stringify({
+          instanceName: fmState.instanceName,
+          containerType: fmState.containerType,
+          dirPath: path
+        })
+      }).then(async res => {
+        if (!res.ok) {
+          const err = await res.json();
+          showAlertInModal(`خطا: ${err.error}`, 'error');
+          return;
+        }
+        const data = await res.json();
+        if (data.success) {
+          showAlertInModal(`✅ پوشه "${name}" ایجاد شد`, 'success');
+          fmLoadFileList();
+        }
+      }).catch(err => {
+        showAlertInModal(`خطا: ${err.message}`, 'error');
+      });
+    }
+
+    function fmToggleUpload() {
+      const area = document.getElementById('fmUploadArea');
+      area.classList.toggle('show');
+      document.getElementById('fmUploadStatus').textContent = '';
+    }
+
+    async function fmUploadFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const status = document.getElementById('fmUploadStatus');
+      status.textContent = `📤 در حال آپلود ${file.name}...`;
+
+      try {
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+          const content = e.target.result;
+          const destPath = fmState.currentPath === '/' ? `/${file.name}` : `${fmState.currentPath}/${file.name}`;
+          
+          const res = await apiCall('/filemanager/upload', {
+            method: 'POST',
+            body: JSON.stringify({
+              instanceName: fmState.instanceName,
+              containerType: fmState.containerType,
+              destPath: destPath,
+              content: content
+            })
+          });
+
+          if (!res.ok) {
+            const err = await res.json();
+            status.textContent = `❌ خطا: ${err.error}`;
+            return;
+          }
+
+          const data = await res.json();
+          if (data.success) {
+            status.textContent = `✅ فایل "${file.name}" آپلود شد`;
+            document.getElementById('fmFileInput').value = '';
+            setTimeout(() => {
+              document.getElementById('fmUploadArea').classList.remove('show');
+              fmLoadFileList();
+            }, 1500);
+          } else {
+            status.textContent = `❌ خطا: ${data.error}`;
+          }
+        };
+        reader.readAsText(file);
+      } catch (err) {
+        status.textContent = `❌ خطا: ${err.message}`;
+      }
+    }
+
+    // Close modal on outside click
+    document.getElementById('fileManagerModal').addEventListener('click', function(e) {
+      if (e.target === this) fmClose();
+    });
 
     // Check if already logged in
     (function() {

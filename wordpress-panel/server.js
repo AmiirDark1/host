@@ -201,6 +201,135 @@ app.get("/api/users", authenticate, adminOnly, (req, res) => {
   );
 });
 
+// ===== FILE MANAGER API =====
+
+// List files in a container
+app.get("/api/filemanager/list", authenticate, async (req, res) => {
+  try {
+    const { instanceName, containerType, path } = req.query;
+    if (!instanceName || !containerType || !path) {
+      return res.status(400).json({ error: "instanceName, containerType, and path are required" });
+    }
+    
+    // Verify ownership for non-admin users
+    if (req.user.role !== "admin") {
+      const containerName = containerType === "db" ? `db-${instanceName}` : `wp-${instanceName}`;
+      const owns = await dockerManager.userOwnsContainer(containerName, req.user.username);
+      if (!owns) return res.status(403).json({ error: "Access denied" });
+    }
+
+    const result = await dockerManager.listFiles(instanceName, containerType, path);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Read file content
+app.get("/api/filemanager/read", authenticate, async (req, res) => {
+  try {
+    const { instanceName, containerType, filePath } = req.query;
+    if (!instanceName || !containerType || !filePath) {
+      return res.status(400).json({ error: "instanceName, containerType, and filePath are required" });
+    }
+    
+    if (req.user.role !== "admin") {
+      const containerName = containerType === "db" ? `db-${instanceName}` : `wp-${instanceName}`;
+      const owns = await dockerManager.userOwnsContainer(containerName, req.user.username);
+      if (!owns) return res.status(403).json({ error: "Access denied" });
+    }
+
+    const result = await dockerManager.readFile(instanceName, containerType, filePath);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Write file content
+app.post("/api/filemanager/write", authenticate, async (req, res) => {
+  try {
+    const { instanceName, containerType, filePath, content } = req.body;
+    if (!instanceName || !containerType || !filePath || content === undefined) {
+      return res.status(400).json({ error: "instanceName, containerType, filePath, and content are required" });
+    }
+    
+    if (req.user.role !== "admin") {
+      const containerName = containerType === "db" ? `db-${instanceName}` : `wp-${instanceName}`;
+      const owns = await dockerManager.userOwnsContainer(containerName, req.user.username);
+      if (!owns) return res.status(403).json({ error: "Access denied" });
+    }
+
+    const result = await dockerManager.writeFile(instanceName, containerType, filePath, content);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete file
+app.delete("/api/filemanager/delete", authenticate, async (req, res) => {
+  try {
+    const { instanceName, containerType, filePath } = req.body;
+    if (!instanceName || !containerType || !filePath) {
+      return res.status(400).json({ error: "instanceName, containerType, and filePath are required" });
+    }
+    
+    if (req.user.role !== "admin") {
+      const containerName = containerType === "db" ? `db-${instanceName}` : `wp-${instanceName}`;
+      const owns = await dockerManager.userOwnsContainer(containerName, req.user.username);
+      if (!owns) return res.status(403).json({ error: "Access denied" });
+    }
+
+    const result = await dockerManager.deleteFile(instanceName, containerType, filePath);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Create directory
+app.post("/api/filemanager/mkdir", authenticate, async (req, res) => {
+  try {
+    const { instanceName, containerType, dirPath } = req.body;
+    if (!instanceName || !containerType || !dirPath) {
+      return res.status(400).json({ error: "instanceName, containerType, and dirPath are required" });
+    }
+    
+    if (req.user.role !== "admin") {
+      const containerName = containerType === "db" ? `db-${instanceName}` : `wp-${instanceName}`;
+      const owns = await dockerManager.userOwnsContainer(containerName, req.user.username);
+      if (!owns) return res.status(403).json({ error: "Access denied" });
+    }
+
+    const result = await dockerManager.createDir(instanceName, containerType, dirPath);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Upload file
+app.post("/api/filemanager/upload", authenticate, async (req, res) => {
+  try {
+    const { instanceName, containerType, destPath, content } = req.body;
+    if (!instanceName || !containerType || !destPath || content === undefined) {
+      return res.status(400).json({ error: "instanceName, containerType, destPath, and content are required" });
+    }
+    
+    if (req.user.role !== "admin") {
+      const containerName = containerType === "db" ? `db-${instanceName}` : `wp-${instanceName}`;
+      const owns = await dockerManager.userOwnsContainer(containerName, req.user.username);
+      if (!owns) return res.status(403).json({ error: "Access denied" });
+    }
+
+    const result = await dockerManager.uploadFile(instanceName, containerType, destPath, content);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Catch-all for the root path - serve index.html
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));

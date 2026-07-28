@@ -196,6 +196,168 @@ class DockerManager {
     return instances;
   }
 
+  // Check if user owns a container
+  async userOwnsContainer(containerName, userId) {
+    try {
+      const container = docker.getContainer(containerName);
+      const info = await container.inspect();
+      const labels = info.Config.Labels || {};
+      return labels['wp-user'] === userId;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // File Manager - List directory contents
+  async listFiles(instanceName, containerType, path) {
+    try {
+      const containerName = containerType === 'db' ? `db-${instanceName}` : `wp-${instanceName}`;
+      const container = docker.getContainer(containerName);
+      
+      const exec = await container.exec({
+        Cmd: ['sh', '-c', `ls -la ${path} 2>&1`],
+        AttachStdout: true,
+        AttachStderr: true,
+      });
+
+      const startResult = await exec.start({ Tty: true, Detach: false, stdin: false });
+      const stream = startResult;
+      
+      return new Promise((resolve, reject) => {
+        let output = '';
+        stream.on('data', (chunk) => { output += chunk.toString(); });
+        stream.on('end', () => {
+          const clean = output.replace(/[^\x20-\x7E\n]/g, '').trim();
+          resolve({ success: true, output: clean });
+        });
+        stream.on('error', (err) => reject({ success: false, error: err.message }));
+      });
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  // Read file content from container
+  async readFile(instanceName, containerType, filePath) {
+    try {
+      const containerName = containerType === 'db' ? `db-${instanceName}` : `wp-${instanceName}`;
+      const container = docker.getContainer(containerName);
+      
+      const exec = await container.exec({
+        Cmd: ['sh', '-c', `cat ${filePath} 2>&1`],
+        AttachStdout: true,
+        AttachStderr: true,
+      });
+
+      const startResult = await exec.start({ Tty: true, Detach: false, stdin: false });
+      const stream = startResult;
+      
+      return new Promise((resolve, reject) => {
+        let output = '';
+        stream.on('data', (chunk) => { output += chunk.toString(); });
+        stream.on('end', () => {
+          const clean = output.replace(/[^\x20-\x7E\n]/g, '').trim();
+          resolve({ success: true, content: clean });
+        });
+        stream.on('error', (err) => reject({ success: false, error: err.message }));
+      });
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  // Write file content to container
+  async writeFile(instanceName, containerType, filePath, content) {
+    try {
+      const containerName = containerType === 'db' ? `db-${instanceName}` : `wp-${instanceName}`;
+      const container = docker.getContainer(containerName);
+      
+      // Use base64 to avoid escaping issues
+      const b64 = Buffer.from(content).toString('base64');
+      
+      const exec = await container.exec({
+        Cmd: ['sh', '-c', `echo ${b64} | base64 -d > ${filePath}`],
+        AttachStdout: true,
+        AttachStderr: true,
+      });
+
+      const startResult = await exec.start({ Tty: true, Detach: false, stdin: false });
+      const stream = startResult;
+      
+      return new Promise((resolve, reject) => {
+        let output = '';
+        stream.on('data', (chunk) => { output += chunk.toString(); });
+        stream.on('end', () => {
+          resolve({ success: true, message: 'File saved successfully' });
+        });
+        stream.on('error', (err) => reject({ success: false, error: err.message }));
+      });
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  // Upload file to container
+  async uploadFile(instanceName, containerType, destPath, content) {
+    return this.writeFile(instanceName, containerType, destPath, content);
+  }
+
+  // Delete file/directory
+  async deleteFile(instanceName, containerType, filePath) {
+    try {
+      const containerName = containerType === 'db' ? `db-${instanceName}` : `wp-${instanceName}`;
+      const container = docker.getContainer(containerName);
+      
+      const exec = await container.exec({
+        Cmd: ['sh', '-c', `rm -rf ${filePath}`],
+        AttachStdout: true,
+        AttachStderr: true,
+      });
+
+      const startResult = await exec.start({ Tty: true, Detach: false, stdin: false });
+      const stream = startResult;
+      
+      return new Promise((resolve, reject) => {
+        let output = '';
+        stream.on('data', (chunk) => { output += chunk.toString(); });
+        stream.on('end', () => {
+          resolve({ success: true, message: 'Deleted successfully' });
+        });
+        stream.on('error', (err) => reject({ success: false, error: err.message }));
+      });
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  // Create directory
+  async createDir(instanceName, containerType, dirPath) {
+    try {
+      const containerName = containerType === 'db' ? `db-${instanceName}` : `wp-${instanceName}`;
+      const container = docker.getContainer(containerName);
+      
+      const exec = await container.exec({
+        Cmd: ['mkdir', '-p', dirPath],
+        AttachStdout: true,
+        AttachStderr: true,
+      });
+
+      const startResult = await exec.start({ Tty: true, Detach: false, stdin: false });
+      const stream = startResult;
+      
+      return new Promise((resolve, reject) => {
+        let output = '';
+        stream.on('data', (chunk) => { output += chunk.toString(); });
+        stream.on('end', () => {
+          resolve({ success: true, message: 'Directory created' });
+        });
+        stream.on('error', (err) => reject({ success: false, error: err.message }));
+      });
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
   async cleanupFailedInstance(instanceName) {
     try {
       const dbContainer = docker.getContainer(`db-${instanceName}`);
