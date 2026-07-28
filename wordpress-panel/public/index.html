@@ -122,9 +122,23 @@
       background: #2980b9;
     }
 
+    .btn-warning {
+      background: #f39c12;
+      color: white;
+    }
+
+    .btn-warning:hover {
+      background: #d68910;
+    }
+
     .btn-sm {
       padding: 8px 16px;
       font-size: 13px;
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
     }
 
     /* Dashboard */
@@ -231,6 +245,51 @@
     .stat-card .number.orange { color: #f39c12; }
     .stat-card .number.blue { color: #3498db; }
 
+    /* Server IP Display */
+    .server-ip-box {
+      background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+      border: 2px dashed #764ba2;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .server-ip-box .ip-label {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 8px;
+    }
+
+    .server-ip-box .ip-address {
+      font-size: 28px;
+      font-weight: 700;
+      color: #764ba2;
+      font-family: 'Courier New', monospace;
+      letter-spacing: 2px;
+    }
+
+    .server-ip-box .ip-hint {
+      font-size: 12px;
+      color: #999;
+      margin-top: 10px;
+    }
+
+    .copy-btn {
+      background: #764ba2;
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+
+    .copy-btn:hover {
+      background: #5a3d82;
+    }
+
     /* Action Bar */
     .action-bar {
       background: white;
@@ -262,6 +321,49 @@
     }
 
     .action-buttons input:focus {
+      outline: none;
+      border-color: #764ba2;
+    }
+
+    .action-buttons .domain-input {
+      direction: ltr;
+      text-align: left;
+    }
+
+    /* Domain list for bulk */
+    .domain-list {
+      margin: 15px 0;
+      display: none;
+    }
+
+    .domain-list.show {
+      display: block;
+    }
+
+    .domain-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .domain-item label {
+      min-width: 100px;
+      font-size: 13px;
+      color: #555;
+    }
+
+    .domain-item input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 2px solid #e1e1e1;
+      border-radius: 8px;
+      font-size: 13px;
+      direction: ltr;
+      text-align: left;
+    }
+
+    .domain-item input:focus {
       outline: none;
       border-color: #764ba2;
     }
@@ -367,6 +469,12 @@
       border: 1px solid #f5c6cb;
     }
 
+    .alert-info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
     /* Loading */
     .loading {
       display: inline-block;
@@ -384,9 +492,46 @@
       100% { transform: rotate(360deg); }
     }
 
-    .btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal.show {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      max-width: 600px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    .modal-content h3 {
+      color: #764ba2;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 20px;
     }
 
     /* Responsive */
@@ -408,42 +553,9 @@
       .action-buttons input {
         width: 100%;
       }
-    }
-
-    /* Section Tabs */
-    .section-tabs {
-      display: flex;
-      gap: 0;
-      margin-bottom: 20px;
-      background: #f0f0f0;
-      border-radius: 10px;
-      overflow: hidden;
-    }
-
-    .section-tab {
-      flex: 1;
-      padding: 12px 20px;
-      text-align: center;
-      cursor: pointer;
-      font-weight: 600;
-      color: #666;
-      transition: all 0.3s;
-      border: none;
-      background: transparent;
-    }
-
-    .section-tab.active {
-      background: white;
-      color: #764ba2;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    }
-
-    .section-content {
-      display: none;
-    }
-
-    .section-content.active {
-      display: block;
+      .server-ip-box .ip-address {
+        font-size: 18px;
+      }
     }
   </style>
 </head>
@@ -490,6 +602,19 @@
     <div class="container">
       <div id="dashboardAlert" class="alert"></div>
 
+      <!-- Server IP Info Box -->
+      <div class="server-ip-box">
+        <div class="ip-label">🌐 آی‌پی سرور (برای تنظیم DNS دامنه)</div>
+        <div class="ip-address" id="serverIp">در حال دریافت...</div>
+        <div>
+          <button onclick="copyServerIp()" class="copy-btn">📋 کپی آی‌پی</button>
+          <button onclick="refreshServerIp()" class="copy-btn" style="background:#3498db;">🔄 بروزرسانی</button>
+        </div>
+        <div class="ip-hint">
+          💡 بعد از ساخت کانتینر، دامنه خود را با استفاده از DNS به این آی‌پی متصل کنید
+        </div>
+      </div>
+
       <!-- Admin Stats (visible only to admin) -->
       <div id="adminStats" style="display:none;">
         <div class="stats-grid">
@@ -512,19 +637,24 @@
         </div>
       </div>
 
-      <!-- Action Bar -->
+      <!-- Action Bar - Single Instance -->
       <div class="action-bar">
-        <h3>➕ ایجاد کانتینر وردپرس جدید</h3>
+        <h3>➕ ایجاد کانتینر وردپرس جدید (تکی)</h3>
         <div class="action-buttons">
-          <input type="text" id="instanceNameInput" placeholder="نام کانتینر (مثلا: my-site)">
-          <button onclick="createSingleInstance()" class="btn btn-success" id="createSingleBtn">ایجاد یک کانتینر</button>
+          <input type="text" id="instanceNameInput" placeholder="نام کانتینر (مثلا: my-site)" style="flex:0.5;">
+          <input type="text" id="singleDomainInput" class="domain-input" placeholder="دامنه (مثلا: example.com)" style="flex:1;" dir="ltr">
+          <button onclick="createSingleInstance()" class="btn btn-success" id="createSingleBtn">ایجاد کانتینر</button>
         </div>
-        <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
+      </div>
+
+      <!-- Action Bar - Bulk Instances -->
+      <div class="action-bar">
         <h3>📦 ایجاد چند کانتینر همزمان</h3>
-        <div class="action-buttons">
-          <button onclick="createBulkInstances(3)" class="btn btn-info" id="create3Btn">ایجاد ۳ کانتینر</button>
-          <button onclick="createBulkInstances(6)" class="btn btn-info" id="create6Btn">ایجاد ۶ کانتینر</button>
+        <div class="action-buttons" style="margin-bottom:15px;">
+          <button onclick="showBulkDomainInput(3)" class="btn btn-info" id="show3Btn">ایجاد ۳ کانتینر</button>
+          <button onclick="showBulkDomainInput(6)" class="btn btn-info" id="show6Btn">ایجاد ۶ کانتینر</button>
         </div>
+        <div id="bulkDomainContainer" class="domain-list"></div>
       </div>
 
       <!-- Instances -->
@@ -539,8 +669,8 @@
               <tr>
                 <th>نام کانتینر</th>
                 <th>کاربر</th>
+                <th>دامنه</th>
                 <th>وضعیت</th>
-                <th>پورت</th>
                 <th>آدرس</th>
                 <th>عملیات</th>
               </tr>
@@ -563,6 +693,7 @@
   <script>
     const API_BASE = '/api';
     let currentUser = null;
+    let bulkCount = 0;
 
     // Login
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -646,10 +777,50 @@
       return res;
     }
 
+    async function fetchServerIp() {
+      try {
+        const res = await fetch(`${API_BASE}/server-ip`);
+        if (res.ok) {
+          const data = await res.json();
+          document.getElementById('serverIp').textContent = data.ip;
+          return data.ip;
+        }
+      } catch (err) {
+        console.error('Error fetching server IP:', err);
+        document.getElementById('serverIp').textContent = 'خطا در دریافت';
+      }
+    }
+
+    function copyServerIp() {
+      const ip = document.getElementById('serverIp').textContent;
+      if (ip && ip !== 'خطا در دریافت' && ip !== 'در حال دریافت...') {
+        navigator.clipboard.writeText(ip).then(() => {
+          showAlert('✅ آی‌پی سرور کپی شد', 'success');
+        }).catch(() => {
+          // Fallback
+          const textarea = document.createElement('textarea');
+          textarea.value = ip;
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+          showAlert('✅ آی‌پی سرور کپی شد', 'success');
+        });
+      }
+    }
+
+    function refreshServerIp() {
+      document.getElementById('serverIp').textContent = 'در حال دریافت...';
+      fetchServerIp();
+    }
+
     async function initDashboard() {
       const user = JSON.parse(localStorage.getItem('user'));
       document.getElementById('userName').textContent = user.name || user.username;
       document.getElementById('userRole').textContent = user.role === 'admin' ? 'مدیر' : 'کاربر';
+
+      // Get server IP
+      fetchServerIp();
 
       // Show admin stats if admin
       if (user.role === 'admin') {
@@ -674,6 +845,127 @@
         document.getElementById('totalContainers').textContent = stats.totalContainers || 0;
       } catch (err) {
         console.error('Error loading stats:', err);
+      }
+    }
+
+    // Show domain input for bulk creation
+    function showBulkDomainInput(count) {
+      bulkCount = count;
+      const container = document.getElementById('bulkDomainContainer');
+      
+      let html = `<div style="margin-bottom:10px;font-size:13px;color:#666;">لطفاً ${count} دامنه وارد کنید:</div>`;
+      
+      for (let i = 0; i < count; i++) {
+        html += `
+          <div class="domain-item">
+            <label>دامنه ${i + 1}:</label>
+            <input type="text" class="bulk-domain-input" placeholder="مثلا: site${i + 1}.example.com" data-index="${i}">
+          </div>
+        `;
+      }
+      
+      html += `
+        <div style="margin-top:15px;">
+          <button onclick="createBulkInstances()" class="btn btn-success" id="bulkCreateBtn">✅ ایجاد ${count} کانتینر</button>
+          <button onclick="document.getElementById('bulkDomainContainer').classList.remove('show')" class="btn btn-sm btn-danger">لغو</button>
+        </div>
+      `;
+      
+      container.innerHTML = html;
+      container.classList.add('show');
+    }
+
+    async function createSingleInstance() {
+      const name = document.getElementById('instanceNameInput').value.trim();
+      const domain = document.getElementById('singleDomainInput').value.trim().toLowerCase();
+      
+      if (!name) {
+        showAlert('لطفا یک نام برای کانتینر وارد کنید', 'error');
+        return;
+      }
+      if (!domain) {
+        showAlert('لطفا دامنه را وارد کنید (مثلا: example.com)', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('createSingleBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"></span> در حال ایجاد...';
+
+      try {
+        const res = await apiCall('/instances', {
+          method: 'POST',
+          body: JSON.stringify({ instanceName: name, domain })
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          showAlert(`خطا: ${err.error}`, 'error');
+          return;
+        }
+
+        const instance = await res.json();
+        showAlert(`✅ کانتینر "${name}" با دامنه ${domain} ایجاد شد!\n📌 DNS را روی ${instance.serverIp} تنظیم کنید`, 'success');
+        document.getElementById('instanceNameInput').value = '';
+        document.getElementById('singleDomainInput').value = '';
+        loadInstances();
+        if (currentUser?.role === 'admin') loadStats();
+      } catch (err) {
+        showAlert(`خطا: ${err.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'ایجاد کانتینر';
+      }
+    }
+
+    async function createBulkInstances() {
+      const domainInputs = document.querySelectorAll('.bulk-domain-input');
+      const domains = [];
+      let valid = true;
+
+      domainInputs.forEach((input, index) => {
+        const domain = input.value.trim().toLowerCase();
+        if (!domain) {
+          showAlert(`لطفا دامنه ${index + 1} را وارد کنید`, 'error');
+          valid = false;
+          return;
+        }
+        domains.push(domain);
+      });
+
+      if (!valid || domains.length !== bulkCount) return;
+
+      const btn = document.getElementById('bulkCreateBtn');
+      btn.disabled = true;
+      btn.innerHTML = `<span class="loading"></span> در حال ایجاد ${bulkCount} کانتینر...`;
+
+      try {
+        const res = await apiCall('/instances/bulk', {
+          method: 'POST',
+          body: JSON.stringify({ count: bulkCount, domains })
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          showAlert(`خطا: ${err.error}`, 'error');
+          return;
+        }
+
+        const instances = await res.json();
+        const successCount = instances.length;
+        const serverIp = instances[0]?.serverIp || 'SERVER_IP';
+        showAlert(
+          `✅ ${successCount} کانتینر با موفقیت ایجاد شد!\n📌 DNS دامنه‌ها را روی ${serverIp} تنظیم کنید`,
+          'success'
+        );
+        document.getElementById('bulkDomainContainer').classList.remove('show');
+        loadInstances();
+        if (currentUser?.role === 'admin') loadStats();
+      } catch (err) {
+        showAlert(`خطا: ${err.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = `✅ ایجاد ${bulkCount} کانتینر`;
       }
     }
 
@@ -703,16 +995,16 @@
           const statusClass = inst.status === 'running' ? 'status-running' : 'status-stopped';
           const statusText = inst.status === 'running' ? '🟢 فعال' : '🔴 متوقف';
           const url = inst.url || '-';
-          const port = inst.wpPort || '-';
+          const domain = inst.domain || '-';
           
           html += `
             <tr>
               <td><strong>${inst.instanceName}</strong></td>
               <td>${inst.userId}</td>
+              <td style="direction:ltr;text-align:left;font-size:12px;">${domain}</td>
               <td><span class="status-badge ${statusClass}">${statusText}</span></td>
-              <td>${port}</td>
               <td>
-                ${inst.status === 'running' ? `<a href="${url}" target="_blank" class="instance-link">🔗 مشاهده</a>` : '-'}
+                ${inst.status === 'running' && inst.url && inst.url !== '-' ? `<a href="${inst.url}" target="_blank" class="instance-link">🔗 مشاهده</a>` : '-'}
               </td>
               <td>
                 <button onclick="deleteInstance('${inst.instanceName}')" class="btn btn-sm btn-danger">🗑 حذف</button>
@@ -725,72 +1017,6 @@
       } catch (err) {
         console.error('Error loading instances:', err);
         showAlert('خطا در دریافت لیست کانتینرها', 'error');
-      }
-    }
-
-    async function createSingleInstance() {
-      const name = document.getElementById('instanceNameInput').value.trim();
-      if (!name) {
-        showAlert('لطفا یک نام برای کانتینر وارد کنید', 'error');
-        return;
-      }
-
-      const btn = document.getElementById('createSingleBtn');
-      btn.disabled = true;
-      btn.innerHTML = '<span class="loading"></span> در حال ایجاد...';
-
-      try {
-        const res = await apiCall('/instances', {
-          method: 'POST',
-          body: JSON.stringify({ instanceName: name })
-        });
-
-        if (!res.ok) {
-          const err = await res.json();
-          showAlert(`خطا: ${err.error}`, 'error');
-          return;
-        }
-
-        const instance = await res.json();
-        showAlert(`✅ کانتینر "${name}" با موفقیت ایجاد شد!`, 'success');
-        document.getElementById('instanceNameInput').value = '';
-        loadInstances();
-        if (currentUser?.role === 'admin') loadStats();
-      } catch (err) {
-        showAlert(`خطا: ${err.message}`, 'error');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'ایجاد یک کانتینر';
-      }
-    }
-
-    async function createBulkInstances(count) {
-      const btn = count === 3 ? document.getElementById('create3Btn') : document.getElementById('create6Btn');
-      btn.disabled = true;
-      btn.innerHTML = `<span class="loading"></span> در حال ایجاد ${count} کانتینر...`;
-
-      try {
-        const res = await apiCall('/instances/bulk', {
-          method: 'POST',
-          body: JSON.stringify({ count })
-        });
-
-        if (!res.ok) {
-          const err = await res.json();
-          showAlert(`خطا: ${err.error}`, 'error');
-          return;
-        }
-
-        const instances = await res.json();
-        const successCount = instances.length;
-        showAlert(`✅ ${successCount} کانتینر با موفقیت ایجاد شد!`, 'success');
-        loadInstances();
-        if (currentUser?.role === 'admin') loadStats();
-      } catch (err) {
-        showAlert(`خطا: ${err.message}`, 'error');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = `ایجاد ${count} کانتینر`;
       }
     }
 

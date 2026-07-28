@@ -67,29 +67,39 @@ app.post('/api/login', (req, res) => {
   });
 });
 
-// API routes
-// Create single WordPress instance
+// Get server IP
+app.get('/api/server-ip', (req, res) => {
+  res.json({ ip: dockerManager.getServerIp() });
+});
+
+// API: Create single WordPress instance with domain
 app.post('/api/instances', authenticate, async (req, res) => {
   try {
-    const { instanceName } = req.body;
+    const { instanceName, domain } = req.body;
     if (!instanceName) {
       return res.status(400).json({ error: 'instanceName is required' });
     }
-    const instance = await dockerManager.createWordPressInstance(instanceName, req.user.username);
+    if (!domain) {
+      return res.status(400).json({ error: 'domain is required - لطفاً دامنه را وارد کنید' });
+    }
+    const instance = await dockerManager.createWordPressInstance(instanceName, req.user.username, domain);
     res.json(instance);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Create multiple WordPress instances (3 or 6)
+// Create multiple WordPress instances (3 or 6) with domains
 app.post('/api/instances/bulk', authenticate, async (req, res) => {
   try {
-    const { count } = req.body;
+    const { count, domains } = req.body;
     if (![3, 6].includes(count)) {
       return res.status(400).json({ error: 'Count must be 3 or 6' });
     }
-    const instances = await dockerManager.createMultipleInstances(req.user.username, count);
+    if (!domains || domains.length !== count) {
+      return res.status(400).json({ error: `لطفاً ${count} دامنه وارد کنید` });
+    }
+    const instances = await dockerManager.createMultipleInstances(req.user.username, count, domains);
     res.json(instances);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -163,5 +173,6 @@ app.listen(PORT, () => {
   console.log('🚀 Admin Login: admin / admin123');
   console.log('👤 User Login: user1 / user123');
   console.log('👤 User Login: user2 / user123');
+  console.log(`🖥️  Server IP: ${dockerManager.getServerIp()}`);
   console.log('============================================');
 });
