@@ -152,8 +152,8 @@ app.get('/api/users', authenticate, adminOnly, (req, res) => {
   })));
 });
 
-// Catch-all route for SPA
-app.get('*', (req, res) => {
+// Catch-all route for SPA (Express v5 compatible)
+app.get('/{*path}', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
