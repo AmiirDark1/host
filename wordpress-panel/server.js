@@ -162,8 +162,12 @@ app.get('/api/users', authenticate, adminOnly, (req, res) => {
   })));
 });
 
-// Catch-all route for SPA (Express v5 compatible)
-app.get('/{*path}', (req, res) => {
+// Serve index.html for all non-API routes (catch-all)
+app.get('*', (req, res) => {
+  // Don't catch API routes
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: 'Not found' });
+  }
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
