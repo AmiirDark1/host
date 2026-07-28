@@ -12,23 +12,28 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "8080:8080"  # Traefik dashboard
+      - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - wordpress-net
     restart: unless-stopped
 
-  # Management Panel
+  # Management Panel - accessible on port 80 via Traefik
   wordpress-panel:
     build: .
     container_name: wordpress-panel
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - NODE_ENV=production
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.panel.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.panel.entrypoints=web"
+      - "traefik.http.services.panel.loadbalancer.server.port=3000"
     networks:
       - wordpress-net
     restart: unless-stopped
