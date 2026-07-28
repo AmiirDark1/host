@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مدیریت کانتینرهای وردپرس</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+    }
+
+    /* Login Page */
+    .login-page {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .login-card {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .login-card h1 {
+      text-align: center;
+      color: #764ba2;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .login-card p {
+      text-align: center;
+      color: #666;
+      margin-bottom: 30px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: #555;
+      font-weight: 600;
+    }
+
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e1e1e1;
+      border-radius: 10px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: #764ba2;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      width: 100%;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-danger {
+      background: #e74c3c;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #c0392b;
+    }
+
+    .btn-success {
+      background: #27ae60;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #219a52;
+    }
+
+    .btn-info {
+      background: #3498db;
+      color: white;
+    }
+
+    .btn-info:hover {
+      background: #2980b9;
+    }
+
+    .btn-sm {
+      padding: 8px 16px;
+      font-size: 13px;
+    }
+
+    /* Dashboard */
+    .dashboard {
+      display: none;
+      min-height: 100vh;
+    }
+
+    .dashboard.active {
+      display: block;
+    }
+
+    .header {
+      background: white;
+      padding: 15px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    .header h2 {
+      color: #764ba2;
+      font-size: 20px;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .user-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #f0f0f0;
+      padding: 8px 16px;
+      border-radius: 20px;
+    }
+
+    .user-badge .role-tag {
+      background: #764ba2;
+      color: white;
+      padding: 2px 10px;
+      border-radius: 10px;
+      font-size: 11px;
+    }
+
+    .btn-logout {
+      background: #e74c3c;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.3s;
+    }
+
+    .btn-logout:hover {
+      background: #c0392b;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 30px;
+    }
+
+    /* Stats Cards (Admin) */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .stat-card {
+      background: white;
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+
+    .stat-card h3 {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 10px;
+    }
+
+    .stat-card .number {
+      font-size: 36px;
+      font-weight: 700;
+      color: #764ba2;
+    }
+
+    .stat-card .number.green { color: #27ae60; }
+    .stat-card .number.red { color: #e74c3c; }
+    .stat-card .number.orange { color: #f39c12; }
+    .stat-card .number.blue { color: #3498db; }
+
+    /* Action Bar */
+    .action-bar {
+      background: white;
+      border-radius: 15px;
+      padding: 25px;
+      margin-bottom: 30px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .action-bar h3 {
+      margin-bottom: 15px;
+      color: #555;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .action-buttons input {
+      flex: 1;
+      min-width: 200px;
+      padding: 10px 16px;
+      border: 2px solid #e1e1e1;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+
+    .action-buttons input:focus {
+      outline: none;
+      border-color: #764ba2;
+    }
+
+    /* Instances Table */
+    .instances-section {
+      background: white;
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .instances-section h3 {
+      margin-bottom: 15px;
+      color: #555;
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 12px 15px;
+      text-align: right;
+      border-bottom: 1px solid #eee;
+    }
+
+    th {
+      background: #f8f9fa;
+      color: #555;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    tr:hover {
+      background: #f8f9fa;
+    }
+
+    .status-badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status-running {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status-stopped {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .instance-link {
+      color: #3498db;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .instance-link:hover {
+      text-decoration: underline;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+    }
+
+    .empty-state .icon {
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+
+    /* Alert */
+    .alert {
+      padding: 12px 20px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      display: none;
+    }
+
+    .alert.show {
+      display: block;
+    }
+
+    .alert-success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .alert-error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    /* Loading */
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #764ba2;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .container {
+        padding: 15px;
+      }
+      .header {
+        padding: 15px;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .action-buttons {
+        flex-direction: column;
+      }
+      .action-buttons input {
+        width: 100%;
+      }
+    }
+
+    /* Section Tabs */
+    .section-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 20px;
+      background: #f0f0f0;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .section-tab {
+      flex: 1;
+      padding: 12px 20px;
+      text-align: center;
+      cursor: pointer;
+      font-weight: 600;
+      color: #666;
+      transition: all 0.3s;
+      border: none;
+      background: transparent;
+    }
+
+    .section-tab.active {
+      background: white;
+      color: #764ba2;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .section-content {
+      display: none;
+    }
+
+    .section-content.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <!-- Login Page -->
+  <div id="loginPage" class="login-page">
+    <div class="login-card">
+      <h1>🚀 پنل مدیریت وردپرس</h1>
+      <p>مدیریت کانتینرهای وردپرس با داکر</p>
+      <div id="loginAlert" class="alert alert-error"></div>
+      <form id="loginForm">
+        <div class="form-group">
+          <label>نام کاربری</label>
+          <input type="text" id="username" placeholder="نام کاربری خود را وارد کنید" required>
+        </div>
+        <div class="form-group">
+          <label>رمز عبور</label>
+          <input type="password" id="password" placeholder="رمز عبور خود را وارد کنید" required>
+        </div>
+        <button type="submit" class="btn btn-primary">ورود به پنل</button>
+      </form>
+      <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 10px; font-size: 12px; color: #666;">
+        <p><strong>حساب‌های تست:</strong></p>
+        <p>👤 ادمین: admin / admin123</p>
+        <p>👤 کاربر ۱: user1 / user123</p>
+        <p>👤 کاربر ۲: user2 / user123</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" class="dashboard">
+    <div class="header">
+      <h2>🚀 پنل مدیریت وردپرس</h2>
+      <div class="header-left">
+        <div class="user-badge">
+          <span id="userName"></span>
+          <span id="userRole" class="role-tag"></span>
+        </div>
+        <button onclick="logout()" class="btn-logout">خروج</button>
+      </div>
+    </div>
+
+    <div class="container">
+      <div id="dashboardAlert" class="alert"></div>
+
+      <!-- Admin Stats (visible only to admin) -->
+      <div id="adminStats" style="display:none;">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <h3>کل کاربران</h3>
+            <div class="number blue" id="totalUsers">0</div>
+          </div>
+          <div class="stat-card">
+            <h3>کانتینرهای درحال اجرا</h3>
+            <div class="number green" id="runningContainers">0</div>
+          </div>
+          <div class="stat-card">
+            <h3>کانتینرهای متوقف</h3>
+            <div class="number red" id="stoppedContainers">0</div>
+          </div>
+          <div class="stat-card">
+            <h3>کل کانتینرها</h3>
+            <div class="number orange" id="totalContainers">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Bar -->
+      <div class="action-bar">
+        <h3>➕ ایجاد کانتینر وردپرس جدید</h3>
+        <div class="action-buttons">
+          <input type="text" id="instanceNameInput" placeholder="نام کانتینر (مثلا: my-site)">
+          <button onclick="createSingleInstance()" class="btn btn-success" id="createSingleBtn">ایجاد یک کانتینر</button>
+        </div>
+        <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
+        <h3>📦 ایجاد چند کانتینر همزمان</h3>
+        <div class="action-buttons">
+          <button onclick="createBulkInstances(3)" class="btn btn-info" id="create3Btn">ایجاد ۳ کانتینر</button>
+          <button onclick="createBulkInstances(6)" class="btn btn-info" id="create6Btn">ایجاد ۶ کانتینر</button>
+        </div>
+      </div>
+
+      <!-- Instances -->
+      <div class="instances-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <h3>📋 کانتینرهای وردپرس</h3>
+          <button onclick="loadInstances()" class="btn btn-sm btn-info">🔄 بروزرسانی</button>
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>نام کانتینر</th>
+                <th>کاربر</th>
+                <th>وضعیت</th>
+                <th>پورت</th>
+                <th>آدرس</th>
+                <th>عملیات</th>
+              </tr>
+            </thead>
+            <tbody id="instancesBody">
+              <tr>
+                <td colspan="6" class="empty-state">
+                  <div class="icon">📦</div>
+                  <p>هنوز کانتینری ایجاد نشده است</p>
+                  <p style="font-size:12px;color:#ccc;">برای شروع، یک کانتینر جدید ایجاد کنید</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = '/api';
+    let currentUser = null;
+
+    // Login
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+
+      try {
+        const res = await fetch(`${API_BASE}/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          showLoginError(err.error);
+          return;
+        }
+
+        const data = await res.json();
+        currentUser = data.user;
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        
+        document.getElementById('loginPage').style.display = 'none';
+        document.getElementById('dashboard').classList.add('active');
+        
+        initDashboard();
+      } catch (err) {
+        showLoginError('خطا در ارتباط با سرور');
+      }
+    });
+
+    function showLoginError(msg) {
+      const alert = document.getElementById('loginAlert');
+      alert.textContent = msg;
+      alert.classList.add('show');
+      setTimeout(() => alert.classList.remove('show'), 3000);
+    }
+
+    function showAlert(msg, type = 'success') {
+      const alert = document.getElementById('dashboardAlert');
+      alert.textContent = msg;
+      alert.className = `alert alert-${type} show`;
+      setTimeout(() => alert.classList.remove('show'), 5000);
+    }
+
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      currentUser = null;
+      document.getElementById('dashboard').classList.remove('active');
+      document.getElementById('loginPage').style.display = 'flex';
+    }
+
+    function getToken() {
+      return localStorage.getItem('token');
+    }
+
+    async function apiCall(url, options = {}) {
+      const token = getToken();
+      const headers = { ...options.headers };
+      if (token) {
+        headers['Authorization'] = token;
+      }
+      if (!(options.body instanceof FormData)) {
+        headers['Content-Type'] = 'application/json';
+      }
+
+      const res = await fetch(`${API_BASE}${url}`, {
+        ...options,
+        headers
+      });
+
+      if (res.status === 401) {
+        logout();
+        throw new Error('Session expired');
+      }
+
+      return res;
+    }
+
+    async function initDashboard() {
+      const user = JSON.parse(localStorage.getItem('user'));
+      document.getElementById('userName').textContent = user.name || user.username;
+      document.getElementById('userRole').textContent = user.role === 'admin' ? 'مدیر' : 'کاربر';
+
+      // Show admin stats if admin
+      if (user.role === 'admin') {
+        document.getElementById('adminStats').style.display = 'block';
+        loadStats();
+      } else {
+        document.getElementById('adminStats').style.display = 'none';
+      }
+
+      loadInstances();
+    }
+
+    async function loadStats() {
+      try {
+        const res = await apiCall('/stats');
+        if (!res.ok) return;
+        const stats = await res.json();
+        
+        document.getElementById('totalUsers').textContent = stats.users || 0;
+        document.getElementById('runningContainers').textContent = stats.running || 0;
+        document.getElementById('stoppedContainers').textContent = stats.stopped || 0;
+        document.getElementById('totalContainers').textContent = stats.totalContainers || 0;
+      } catch (err) {
+        console.error('Error loading stats:', err);
+      }
+    }
+
+    async function loadInstances() {
+      try {
+        const res = await apiCall('/instances');
+        if (!res.ok) return;
+        const instances = await res.json();
+        
+        const tbody = document.getElementById('instancesBody');
+        
+        if (instances.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="6" class="empty-state">
+                <div class="icon">📦</div>
+                <p>هنوز کانتینری ایجاد نشده است</p>
+                <p style="font-size:12px;color:#ccc;">برای شروع، یک کانتینر جدید ایجاد کنید</p>
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        let html = '';
+        instances.forEach(inst => {
+          const statusClass = inst.status === 'running' ? 'status-running' : 'status-stopped';
+          const statusText = inst.status === 'running' ? '🟢 فعال' : '🔴 متوقف';
+          const url = inst.url || '-';
+          const port = inst.wpPort || '-';
+          
+          html += `
+            <tr>
+              <td><strong>${inst.instanceName}</strong></td>
+              <td>${inst.userId}</td>
+              <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+              <td>${port}</td>
+              <td>
+                ${inst.status === 'running' ? `<a href="${url}" target="_blank" class="instance-link">🔗 مشاهده</a>` : '-'}
+              </td>
+              <td>
+                <button onclick="deleteInstance('${inst.instanceName}')" class="btn btn-sm btn-danger">🗑 حذف</button>
+              </td>
+            </tr>
+          `;
+        });
+
+        tbody.innerHTML = html;
+      } catch (err) {
+        console.error('Error loading instances:', err);
+        showAlert('خطا در دریافت لیست کانتینرها', 'error');
+      }
+    }
+
+    async function createSingleInstance() {
+      const name = document.getElementById('instanceNameInput').value.trim();
+      if (!name) {
+        showAlert('لطفا یک نام برای کانتینر وارد کنید', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('createSingleBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"></span> در حال ایجاد...';
+
+      try {
+        const res = await apiCall('/instances', {
+          method: 'POST',
+          body: JSON.stringify({ instanceName: name })
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          showAlert(`خطا: ${err.error}`, 'error');
+          return;
+        }
+
+        const instance = await res.json();
+        showAlert(`✅ کانتینر "${name}" با موفقیت ایجاد شد!`, 'success');
+        document.getElementById('instanceNameInput').value = '';
+        loadInstances();
+        if (currentUser?.role === 'admin') loadStats();
+      } catch (err) {
+        showAlert(`خطا: ${err.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'ایجاد یک کانتینر';
+      }
+    }
+
+    async function createBulkInstances(count) {
+      const btn = count === 3 ? document.getElementById('create3Btn') : document.getElementById('create6Btn');
+      btn.disabled = true;
+      btn.innerHTML = `<span class="loading"></span> در حال ایجاد ${count} کانتینر...`;
+
+      try {
+        const res = await apiCall('/instances/bulk', {
+          method: 'POST',
+          body: JSON.stringify({ count })
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          showAlert(`خطا: ${err.error}`, 'error');
+          return;
+        }
+
+        const instances = await res.json();
+        const successCount = instances.length;
+        showAlert(`✅ ${successCount} کانتینر با موفقیت ایجاد شد!`, 'success');
+        loadInstances();
+        if (currentUser?.role === 'admin') loadStats();
+      } catch (err) {
+        showAlert(`خطا: ${err.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = `ایجاد ${count} کانتینر`;
+      }
+    }
+
+    async function deleteInstance(instanceName) {
+      if (!confirm(`آیا از حذف کانتینر "${instanceName}" اطمینان دارید؟`)) {
+        return;
+      }
+
+      try {
+        const res = await apiCall(`/instances/${instanceName}`, {
+          method: 'DELETE'
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          showAlert(`خطا: ${err.error}`, 'error');
+          return;
+        }
+
+        showAlert(`🗑 کانتینر "${instanceName}" حذف شد`, 'success');
+        loadInstances();
+        if (currentUser?.role === 'admin') loadStats();
+      } catch (err) {
+        showAlert(`خطا: ${err.message}`, 'error');
+      }
+    }
+
+    // Check if already logged in
+    (function() {
+      const token = localStorage.getItem('token');
+      const user = localStorage.getItem('user');
+      if (token && user) {
+        currentUser = JSON.parse(user);
+        document.getElementById('loginPage').style.display = 'none';
+        document.getElementById('dashboard').classList.add('active');
+        initDashboard();
+      }
+    })();
+  </script>
+</body>
+</html>

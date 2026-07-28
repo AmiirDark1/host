@@ -1,1 +1,0 @@
-"""Domain-Driven Design base classes and patterns."""
