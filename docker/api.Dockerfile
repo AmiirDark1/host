@@ -1,7 +1,7 @@
 # Dockerfile for Hosting Control Panel API
 # Multi-stage build for production optimization
 
-FROM python:3.13-slim AS builder
+FROM python:3.13-bookworm AS builder
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -12,13 +12,22 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install system build dependencies
+# Install system build dependencies (bookworm has most tools pre-installed)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         gcc \
+        g++ \
         libpq-dev \
-        curl \
+        libssl-dev \
+        pkg-config \
         && rm -rf /var/lib/apt/lists/*
+
+# Install Rust for compiling Rust-based Python packages (pydantic-core, orjson, asyncpg)
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+    . "$HOME/.cargo/env" && \
+    rustup default stable && \
+    rustup target add x86_64-unknown-linux-gnu
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Install Python dependencies
 COPY requirements.txt .
