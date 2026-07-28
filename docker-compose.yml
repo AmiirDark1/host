@@ -1,8 +1,6 @@
 # Docker Compose for Distributed WordPress Hosting Control Panel
 # Main Controller & supporting services
 
-version: "3.8"
-
 x-logging: &default-logging
   driver: "json-file"
   options:
