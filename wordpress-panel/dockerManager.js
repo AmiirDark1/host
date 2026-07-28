@@ -78,6 +78,17 @@ class DockerManager {
       await new Promise(resolve => setTimeout(resolve, 10000));
 
       // Create WordPress container with Traefik labels for reverse proxy
+      const labels = {
+        'wp-managed': 'true',
+        'wp-user': userId,
+        'wp-instance': instanceName,
+        'wp-type': 'wordpress',
+        'traefik.enable': 'true',
+      };
+      labels['traefik.http.routers.wp-' + instanceName + '.rule'] = 'Host(`' + domain + '`)';
+      labels['traefik.http.routers.wp-' + instanceName + '.entrypoints'] = 'web';
+      labels['traefik.http.services.wp-' + instanceName + '.loadbalancer.server.port'] = '80';
+
       const wpContainer = await docker.createContainer({
         name: containerName,
         Image: 'wordpress:latest',
@@ -93,16 +104,7 @@ class DockerManager {
           RestartPolicy: { Name: 'always' },
           Links: [dbContainerName],
         },
-        Labels: {
-          'wp-managed': 'true',
-          'wp-user': userId,
-          'wp-instance': instanceName,
-          'wp-type': 'wordpress',
-          'traefik.enable': 'true',
-          `traefik.http.routers.wp-${instanceName}.rule`: `Host(\`${domain}\`)`,
-          `traefik.http.routers.wp-${instanceName}.entrypoints`: 'web',
-          `traefik.http.services.wp-${instanceName}.loadbalancer.server.port`: '80',
-        },
+        Labels: labels,
       });
 
       await wpContainer.start();
