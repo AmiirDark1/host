@@ -43,5 +43,4 @@ services:
 
 networks:
   wordpress-net:
-    external: true
-    name: wordpress-net
+    driver: bridge
