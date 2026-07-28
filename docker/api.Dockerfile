@@ -1,7 +1,7 @@
 # Dockerfile for Hosting Control Panel API
 # Multi-stage build for production optimization
 
-FROM python:3.13-bookworm AS builder
+FROM python:3.12-bookworm AS builder
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -23,18 +23,20 @@ RUN apt-get update && \
         && rm -rf /var/lib/apt/lists/*
 
 # Install Rust for compiling Rust-based Python packages (pydantic-core, orjson, asyncpg)
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
-    . "$HOME/.cargo/env" && \
-    rustup default stable && \
-    rustup target add x86_64-unknown-linux-gnu
-ENV PATH="/root/.cargo/bin:${PATH}"
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:$PATH
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path && \
+    chmod -R a+w $RUSTUP_HOME $CARGO_HOME && \
+    rustup default stable
 
 # Install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -U pip maturin setuptools-rust && \
+    pip install --no-cache-dir -r requirements.txt
 
 # ---- Production Stage ----
-FROM python:3.13-slim
+FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -52,7 +54,7 @@ RUN apt-get update && \
         && rm -rf /var/lib/apt/lists/*
 
 # Copy Python packages from builder
-COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code
