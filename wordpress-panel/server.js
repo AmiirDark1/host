@@ -162,13 +162,22 @@ app.get('/api/users', authenticate, adminOnly, (req, res) => {
   })));
 });
 
+// Catch-all for the root path - serve index.html
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 // Catch-all for unknown API routes
-app.all('/api/:path(.*)', (req, res) => {
+app.use('/api', (req, res) => {
   res.status(404).json({ error: 'API endpoint not found' });
 });
 
-// For all other routes, serve the SPA index.html
-app.get('/:path(.*)?', (req, res) => {
+// Catch-all for SPA routing - serve index.html for any non-file route
+app.use((req, res) => {
+  // Don't serve index.html for API routes
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ error: 'API endpoint not found' });
+  }
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
