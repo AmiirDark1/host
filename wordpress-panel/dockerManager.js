@@ -21,6 +21,22 @@ class DockerManager {
     return 'SERVER_IP';
   }
 
+  // Helper: escape path for use inside single quotes in shell commands
+  _escapePath(path) {
+    return path.replace(/'/g, "'\\\\''");
+  }
+
+  // Helper: clean terminal output while preserving UTF-8/Persian text
+  _cleanOutput(output) {
+    // Remove ANSI escape sequences
+    let cleaned = output.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '');
+    // Remove null bytes and other control chars (keep \t, \n, \r)
+    cleaned = cleaned.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+    // Remove carriage returns
+    cleaned = cleaned.replace(/\r/g, '');
+    return cleaned.trim();
+  }
+
   async getNextWpPort() {
     const usedPorts = new Set();
     try {
@@ -213,9 +229,10 @@ class DockerManager {
     try {
       const containerName = containerType === 'db' ? `db-${instanceName}` : `wp-${instanceName}`;
       const container = docker.getContainer(containerName);
+      const escapedPath = this._escapePath(path);
       
       const exec = await container.exec({
-        Cmd: ['sh', '-c', `ls -la ${path} 2>&1`],
+        Cmd: ['sh', '-c', `ls -la '${escapedPath}' 2>&1`],
         AttachStdout: true,
         AttachStderr: true,
       });
@@ -227,7 +244,7 @@ class DockerManager {
         let output = '';
         stream.on('data', (chunk) => { output += chunk.toString(); });
         stream.on('end', () => {
-          const clean = output.replace(/[^\x20-\x7E\n]/g, '').trim();
+          const clean = this._cleanOutput(output);
           resolve({ success: true, output: clean });
         });
         stream.on('error', (err) => reject({ success: false, error: err.message }));
@@ -242,9 +259,10 @@ class DockerManager {
     try {
       const containerName = containerType === 'db' ? `db-${instanceName}` : `wp-${instanceName}`;
       const container = docker.getContainer(containerName);
+      const escapedPath = this._escapePath(filePath);
       
       const exec = await container.exec({
-        Cmd: ['sh', '-c', `cat ${filePath} 2>&1`],
+        Cmd: ['sh', '-c', `cat '${escapedPath}' 2>&1`],
         AttachStdout: true,
         AttachStderr: true,
       });
@@ -256,7 +274,7 @@ class DockerManager {
         let output = '';
         stream.on('data', (chunk) => { output += chunk.toString(); });
         stream.on('end', () => {
-          const clean = output.replace(/[^\x20-\x7E\n]/g, '').trim();
+          const clean = this._cleanOutput(output);
           resolve({ success: true, content: clean });
         });
         stream.on('error', (err) => reject({ success: false, error: err.message }));
@@ -266,32 +284,37 @@ class DockerManager {
     }
   }
 
-  // Write file content to container
+  // Write file content to container using Docker's tar archive API
   async writeFile(instanceName, containerType, filePath, content) {
     try {
       const containerName = containerType === 'db' ? `db-${instanceName}` : `wp-${instanceName}`;
       const container = docker.getContainer(containerName);
       
-      // Use base64 to avoid escaping issues
-      const b64 = Buffer.from(content).toString('base64');
+      // Use docker's putArchive (tar) to write files - bulletproof, works on any container
+      const tar = require('tar-stream');
+      const pack = tar.pack();
       
-      const exec = await container.exec({
-        Cmd: ['sh', '-c', `echo ${b64} | base64 -d > ${filePath}`],
-        AttachStdout: true,
-        AttachStderr: true,
-      });
-
-      const startResult = await exec.start({ Tty: true, Detach: false, stdin: false });
-      const stream = startResult;
+      // Get the filename and the directory
+      const normalizedPath = filePath.replace(/\\/g, '/');
+      const lastSlash = normalizedPath.lastIndexOf('/');
+      const dirPath = lastSlash > 0 ? normalizedPath.substring(0, lastSlash) : '/';
+      const fileName = lastSlash >= 0 ? normalizedPath.substring(lastSlash + 1) : normalizedPath;
       
-      return new Promise((resolve, reject) => {
-        let output = '';
-        stream.on('data', (chunk) => { output += chunk.toString(); });
-        stream.on('end', () => {
-          resolve({ success: true, message: 'File saved successfully' });
-        });
-        stream.on('error', (err) => reject({ success: false, error: err.message }));
+      pack.entry({ name: fileName }, Buffer.from(content, 'utf-8'));
+      pack.finalize();
+      
+      // Collect tar data into a buffer
+      const chunks = [];
+      for await (const chunk of pack) {
+        chunks.push(chunk);
+      }
+      const tarBuffer = Buffer.concat(chunks);
+      
+      await container.putArchive(tarBuffer, {
+        path: dirPath
       });
+      
+      return { success: true, message: 'File saved successfully' };
     } catch (err) {
       return { success: false, error: err.message };
     }
@@ -307,9 +330,10 @@ class DockerManager {
     try {
       const containerName = containerType === 'db' ? `db-${instanceName}` : `wp-${instanceName}`;
       const container = docker.getContainer(containerName);
+      const escapedPath = this._escapePath(filePath);
       
       const exec = await container.exec({
-        Cmd: ['sh', '-c', `rm -rf ${filePath}`],
+        Cmd: ['sh', '-c', `rm -rf '${escapedPath}'`],
         AttachStdout: true,
         AttachStderr: true,
       });

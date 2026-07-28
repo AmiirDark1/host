@@ -1496,11 +1496,9 @@
           return;
         }
 
-        // Clean the content from terminal escape sequences
+        // The backend now handles cleaning ANSI escapes and control chars
+        // Just trim leading/trailing whitespace
         let content = data.content;
-        // Remove non-printable characters except newlines
-        content = content.replace(/[^\x20-\x7E\n]/g, '');
-        // Remove the command echo from shell
         content = content.trim();
         
         editorContent.value = content;
