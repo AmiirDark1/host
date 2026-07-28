@@ -1,46 +1,14 @@
 services:
-  # Traefik reverse proxy
-  traefik:
-    image: traefik:v2.10
-    container_name: traefik
-    command:
-      - "--api.insecure=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-    ports:
-      - "80:80"
-      - "443:443"
-      - "8080:8080"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    networks:
-      - wordpress-net
-    restart: unless-stopped
-
-  # Management Panel - accessible on port 80 via Traefik
+  # Management Panel
   wordpress-panel:
     build: .
     container_name: wordpress-panel
-    expose:
-      - "3000"
+    ports:
+      - "80:3000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - NODE_ENV=production
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.panel.rule=PathPrefix(`/`)"
-      - "traefik.http.routers.panel.entrypoints=web"
-      - "traefik.http.services.panel.loadbalancer.server.port=3000"
-    networks:
-      - wordpress-net
     restart: unless-stopped
     stop_grace_period: 60s
-    depends_on:
-      - traefik
-
-networks:
-  wordpress-net:
-    driver: bridge
+    privileged: true
