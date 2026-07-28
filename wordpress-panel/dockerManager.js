@@ -5,7 +5,8 @@ const os = require('os');
 class DockerManager {
   constructor() {
     this.containers = new Map();
-    this.networks = new Map();
+    this.nextWpPort = 8080;
+    this.nextDbPort = 3307;
   }
 
   getServerIp() {
@@ -18,6 +19,44 @@ class DockerManager {
       }
     }
     return 'SERVER_IP';
+  }
+
+  async getNextWpPort() {
+    const usedPorts = new Set();
+    try {
+      const containers = await docker.listContainers({ all: true });
+      for (const c of containers) {
+        if (c.Ports) {
+          for (const p of c.Ports) {
+            if (p.PublicPort) usedPorts.add(p.PublicPort);
+          }
+        }
+      }
+    } catch (e) { /* ignore */ }
+    
+    let port = this.nextWpPort;
+    while (usedPorts.has(port)) port++;
+    this.nextWpPort = port + 1;
+    return port;
+  }
+
+  async getNextDbPort() {
+    const usedPorts = new Set();
+    try {
+      const containers = await docker.listContainers({ all: true });
+      for (const c of containers) {
+        if (c.Ports) {
+          for (const p of c.Ports) {
+            if (p.PublicPort) usedPorts.add(p.PublicPort);
+          }
+        }
+      }
+    } catch (e) { /* ignore */ }
+    
+    let port = this.nextDbPort;
+    while (usedPorts.has(port)) port++;
+    this.nextDbPort = port + 1;
+    return port;
   }
 
   async ensureNetwork() {
@@ -37,19 +76,18 @@ class DockerManager {
   async createWordPressInstance(instanceName, userId, domain) {
     const network = await this.ensureNetwork();
     const serverIp = this.getServerIp();
+    const wpPort = await this.getNextWpPort();
+    const dbPort = await this.getNextDbPort();
 
-    // Generate random port for WordPress (internal, not exposed)
-    const dbPort = 3306 + Math.floor(Math.random() * 1000);
-    
     const dbName = `wp_db_${instanceName}`;
     const dbUser = `wp_user_${instanceName}`;
-    const dbPassword = Math.random().toString(36).substring(2, 15);
+    const dbPassword = Math.random().toString(36).substring(2, 15) + 'Aa1!';
     
     const containerName = `wp-${instanceName}`;
     const dbContainerName = `db-${instanceName}`;
 
     try {
-      // Create MySQL container
+      // Create MySQL container with exposed port for external admin access
       const dbContainer = await docker.createContainer({
         name: dbContainerName,
         Image: 'mysql:5.7',
@@ -59,9 +97,15 @@ class DockerManager {
           `MYSQL_USER=${dbUser}`,
           `MYSQL_PASSWORD=${dbPassword}`,
         ],
+        ExposedPorts: {
+          '3306/tcp': {},
+        },
         HostConfig: {
           NetworkMode: 'wordpress-net',
           RestartPolicy: { Name: 'always' },
+          PortBindings: {
+            '3306/tcp': [{ HostPort: String(dbPort) }],
+          },
         },
         Labels: {
           'wp-managed': 'true',
@@ -72,23 +116,12 @@ class DockerManager {
       });
 
       await dbContainer.start();
-      console.log(`MySQL container ${dbContainerName} started`);
+      console.log(`MySQL container ${dbContainerName} started on port ${dbPort}`);
 
       // Wait for MySQL to be ready
       await new Promise(resolve => setTimeout(resolve, 10000));
 
-      // Create WordPress container with Traefik labels for reverse proxy
-      const labels = {
-        'wp-managed': 'true',
-        'wp-user': userId,
-        'wp-instance': instanceName,
-        'wp-type': 'wordpress',
-        'traefik.enable': 'true',
-      };
-      labels['traefik.http.routers.wp-' + instanceName + '.rule'] = 'Host(`' + domain + '`)';
-      labels['traefik.http.routers.wp-' + instanceName + '.entrypoints'] = 'web';
-      labels['traefik.http.services.wp-' + instanceName + '.loadbalancer.server.port'] = '80';
-
+      // Create WordPress container with exposed port
       const wpContainer = await docker.createContainer({
         name: containerName,
         Image: 'wordpress:latest',
@@ -97,32 +130,44 @@ class DockerManager {
           `WORDPRESS_DB_USER=${dbUser}`,
           `WORDPRESS_DB_PASSWORD=${dbPassword}`,
           `WORDPRESS_DB_NAME=${dbName}`,
-          `WORDPRESS_CONFIG_EXTRA=define('WP_SITEURL', 'http://${domain}'); define('WP_HOME', 'http://${domain}');`,
+          `WORDPRESS_CONFIG_EXTRA=define('WP_SITEURL', 'http://${serverIp}:${wpPort}'); define('WP_HOME', 'http://${serverIp}:${wpPort}');`,
         ],
+        ExposedPorts: {
+          '80/tcp': {},
+        },
         HostConfig: {
           NetworkMode: 'wordpress-net',
           RestartPolicy: { Name: 'always' },
+          PortBindings: {
+            '80/tcp': [{ HostPort: String(wpPort) }],
+          },
           Links: [dbContainerName],
         },
-        Labels: labels,
+        Labels: {
+          'wp-managed': 'true',
+          'wp-user': userId,
+          'wp-instance': instanceName,
+          'wp-type': 'wordpress',
+          'wp-domain': domain,
+        },
       });
 
       await wpContainer.start();
-      console.log(`WordPress container ${containerName} started for domain ${domain}`);
+      console.log(`WordPress container ${containerName} started on port ${wpPort} for ${domain}`);
 
       const key = `${userId}-${instanceName}`;
       const instance = {
         instanceName,
         userId,
         domain,
-        wpPort: 80, // internal port, served via Traefik
+        wpPort,
         dbPort,
         wpContainerId: wpContainer.id,
         dbContainerId: dbContainer.id,
         wpContainerName: containerName,
         dbContainerName: dbContainerName,
         status: 'running',
-        url: `http://${domain}`,
+        url: `http://${serverIp}:${wpPort}`,
         serverIp,
         createdAt: new Date(),
       };
@@ -168,7 +213,8 @@ class DockerManager {
       await this.removeContainer(`db-${instanceName}`);
       await this.stopContainer(`wp-${instanceName}`);
       await this.removeContainer(`wp-${instanceName}`);
-      
+
+      // Clean up from in-memory map
       for (const [key, value] of this.containers) {
         if (value.instanceName === instanceName) {
           this.containers.delete(key);
@@ -210,18 +256,37 @@ class DockerManager {
     for (const containerInfo of allContainers) {
       const labels = containerInfo.Labels;
       const key = `${labels['wp-user']}-${labels['wp-instance']}`;
-      
+
       if (!instances[key]) {
+        let wpPort = null;
+        let dbPort = null;
+        let url = null;
+        const serverIp = this.getServerIp();
+
+        // Extract ports from container info
+        if (containerInfo.Ports) {
+          for (const p of containerInfo.Ports) {
+            if (p.PrivatePort === 80) {
+              wpPort = p.PublicPort;
+              url = `http://${serverIp}:${wpPort}`;
+            }
+            if (p.PrivatePort === 3306) {
+              dbPort = p.PublicPort;
+            }
+          }
+        }
+
         instances[key] = {
           instanceName: labels['wp-instance'],
           userId: labels['wp-user'],
-          domain: labels['traefik.enable'] ? 'domain_set' : null,
-          status: 'running',
-          wpPort: null,
+          domain: labels['wp-domain'] || null,
+          status: containerInfo.State,
+          wpPort,
+          dbPort,
           wpContainerId: null,
           dbContainerId: null,
-          url: null,
-          serverIp: this.getServerIp(),
+          url,
+          serverIp,
           createdAt: null,
         };
       }
@@ -229,15 +294,24 @@ class DockerManager {
       if (labels['wp-type'] === 'wordpress') {
         instances[key].wpContainerId = containerInfo.Id;
         instances[key].status = containerInfo.State;
-        // Extract domain from Traefik labels
-        for (const [labelKey, labelValue] of Object.entries(labels)) {
-          if (labelKey.includes('Host')) {
-            instances[key].domain = labelValue.replace(/[`()]/g, '').replace('Host', '').trim();
-            instances[key].url = `http://${instances[key].domain}`;
+        // Update URL/port from the running container
+        if (containerInfo.Ports) {
+          for (const p of containerInfo.Ports) {
+            if (p.PrivatePort === 80 && p.PublicPort) {
+              instances[key].wpPort = p.PublicPort;
+              instances[key].url = `http://${instances[key].serverIp}:${p.PublicPort}`;
+            }
           }
         }
       } else if (labels['wp-type'] === 'database') {
         instances[key].dbContainerId = containerInfo.Id;
+        if (containerInfo.Ports) {
+          for (const p of containerInfo.Ports) {
+            if (p.PrivatePort === 3306 && p.PublicPort) {
+              instances[key].dbPort = p.PublicPort;
+            }
+          }
+        }
       }
     }
 
