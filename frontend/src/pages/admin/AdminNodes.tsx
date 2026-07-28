@@ -1,11 +1,14 @@
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { nodesAPI } from '@/lib/api'
-import { Server, Activity, Cpu, HardDrive, Wifi, Plus, MoreHorizontal } from 'lucide-react'
+import { Server, Activity, Cpu, HardDrive, Wifi, Plus, Terminal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'react-hot-toast'
+import NodeTerminal from '@/components/terminal/NodeTerminal'
 
 export default function AdminNodes() {
   const queryClient = useQueryClient()
+  const [terminalNode, setTerminalNode] = useState<{ id: string; name: string; host: string } | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'nodes'],
@@ -159,18 +162,38 @@ export default function AdminNodes() {
 
               {/* Actions */}
               <div className="flex gap-2 mt-4 pt-4 border-t">
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  onClick={() => setTerminalNode({ id: node.id, name: node.name, host: node.host })}
+                >
+                  <Terminal className="h-4 w-4 mr-1.5" />
+                  SSH Connect
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => toggleMutation.mutate({ id: node.id, status: 'drain' })}>
                   Drain
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => toggleMutation.mutate({ id: node.id, status: 'maintenance' })}>
                   Maintenance
                 </Button>
-                <Button variant="outline" size="sm">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* SSH Terminal Modal */}
+      {terminalNode && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-5xl">
+            <NodeTerminal
+              nodeId={terminalNode.id}
+              nodeName={terminalNode.name}
+              nodeHost={terminalNode.host}
+              onClose={() => setTerminalNode(null)}
+            />
+          </div>
         </div>
       )}
     </div>
