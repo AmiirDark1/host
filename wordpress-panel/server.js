@@ -162,13 +162,13 @@ app.get('/api/users', authenticate, adminOnly, (req, res) => {
   })));
 });
 
-// Catch-all: serve index.html for all non-API routes
-app.use('/api/*', (req, res) => {
+// Catch-all for unknown API routes
+app.all('/api/:path(.*)', (req, res) => {
   res.status(404).json({ error: 'API endpoint not found' });
 });
 
 // For all other routes, serve the SPA index.html
-app.use((req, res) => {
+app.get('/:path(.*)?', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
