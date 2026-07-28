@@ -1,0 +1,213 @@
+# Docker Compose for Distributed WordPress Hosting Control Panel
+# Main Controller & supporting services
+
+version: "3.8"
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-healthcheck: &db-healthcheck
+  test: ["CMD-SHELL", "pg_isready -U hosting_admin -d hosting_control"]
+  interval: 10s
+  timeout: 5s
+  retries: 5
+
+services:
+  # ---- Database ----
+  postgres:
+    image: postgres:16-alpine
+    container_name: hosting-postgres
+    environment:
+      POSTGRES_DB: hosting_control
+      POSTGRES_USER: hosting_admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_secure_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      <<: *db-healthcheck
+    restart: unless-stopped
+    networks:
+      - hosting-network
+    logging: *default-logging
+
+  # ---- Cache & Message Queue ----
+  redis:
+    image: redis:7-alpine
+    container_name: hosting-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_secret}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - hosting-network
+    logging: *default-logging
+
+  # ---- Main Controller API ----
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    container_name: hosting-api
+    command: uvicorn hosting_control.main_controller.api.main:app --host 0.0.0.0 --port 8000 --reload --log-level info
+    volumes:
+      - ./src:/app/src
+      - ./alembic:/app/alembic
+      - ./secrets:/app/secrets:ro
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://hosting_admin:${POSTGRES_PASSWORD:-changeme_secure_password}@postgres:5432/hosting_control
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secret}@redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-supersecretkeychangeinproduction}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      JWT_SECRET: ${JWT_SECRET:-jwtsecretchangeinproduction}
+      ENVIRONMENT: development
+      DEBUG: "true"
+      CORS_ORIGINS: http://localhost:3000,http://localhost:5173
+      STORAGE_BACKEND: local
+      STORAGE_LOCAL_PATH: /storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - hosting-network
+    logging: *default-logging
+
+  # ---- Celery Worker ----
+  celery-worker:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    container_name: hosting-celery-worker
+    command: celery -A hosting_control.main_controller.core.celery_app worker --loglevel=info --concurrency=4 --queues=default,provisioning,backup,monitoring
+    volumes:
+      - ./src:/app/src
+      - ./secrets:/app/secrets:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      DATABASE_URL: postgresql+asyncpg://hosting_admin:${POSTGRES_PASSWORD:-changeme_secure_password}@postgres:5432/hosting_control
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secret}@redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-supersecretkeychangeinproduction}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      JWT_SECRET: ${JWT_SECRET:-jwtsecretchangeinproduction}
+      ENVIRONMENT: development
+      STORAGE_BACKEND: local
+      STORAGE_LOCAL_PATH: /storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - hosting-network
+    logging: *default-logging
+
+  # ---- Celery Beat (Scheduler) ----
+  celery-beat:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    container_name: hosting-celery-beat
+    command: celery -A hosting_control.main_controller.core.celery_app beat --loglevel=info --scheduler=redbeat.RedBeatScheduler
+    volumes:
+      - ./src:/app/src
+      - ./secrets:/app/secrets:ro
+    environment:
+      DATABASE_URL: postgresql+asyncpg://hosting_admin:${POSTGRES_PASSWORD:-changeme_secure_password}@postgres:5432/hosting_control
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secret}@redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-supersecretkeychangeinproduction}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      JWT_SECRET: ${JWT_SECRET:-jwtsecretchangeinproduction}
+      ENVIRONMENT: development
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - hosting-network
+    logging: *default-logging
+
+  # ---- Flower (Celery Monitoring) ----
+  flower:
+    image: mher/flower:2.0
+    container_name: hosting-flower
+    command: celery flower --broker=redis://:${REDIS_PASSWORD:-redis_secret}@redis:6379/0 --port=5555
+    ports:
+      - "5555:5555"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - hosting-network
+    logging: *default-logging
+
+  # ---- Prometheus (Metrics Collection) ----
+  prometheus:
+    image: prom/prometheus:v2.50.0
+    container_name: hosting-prometheus
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    networks:
+      - hosting-network
+    logging: *default-logging
+
+  # ---- Grafana (Dashboards) ----
+  grafana:
+    image: grafana/grafana:10.3.0
+    container_name: hosting-grafana
+    volumes:
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+    ports:
+      - "3001:3000"
+    restart: unless-stopped
+    networks:
+      - hosting-network
+    logging: *default-logging
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  hosting-network:
+    driver: bridge
