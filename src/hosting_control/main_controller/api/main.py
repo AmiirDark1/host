@@ -13,12 +13,13 @@ from hosting_control.main_controller.api.auth import router as auth_router
 from hosting_control.main_controller.api.hosting import router as hosting_router
 from hosting_control.main_controller.api.admin import router as admin_router
 from hosting_control.main_controller.api.monitoring import router as monitoring_router
+from hosting_control.main_controller.api.terminal import router as terminal_router
+from hosting_control.main_controller.api.terminal import terminal_manager
 from hosting_control.main_controller.core.redis_client import RedisClient
 from hosting_control.main_controller.infrastructure.database import (
     close_database,
     init_database,
 )
-from hosting_control.main_controller.infrastructure.database import engine as db_engine
 from hosting_control.shared.config import get_settings
 
 settings = get_settings()
@@ -33,6 +34,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     redis_client = RedisClient()
     await redis_client.initialize()
     app.state.redis = redis_client
+    
+    # Start terminal cleanup task
+    await terminal_manager.start_cleanup_task()
     
     yield
     
@@ -70,6 +74,7 @@ app.include_router(auth_router, prefix=f"{settings.API_PREFIX}/auth", tags=["Aut
 app.include_router(hosting_router, prefix=f"{settings.API_PREFIX}/hosting", tags=["Hosting"])
 app.include_router(admin_router, prefix=f"{settings.API_PREFIX}/admin", tags=["Admin"])
 app.include_router(monitoring_router, prefix=f"{settings.API_PREFIX}/monitoring", tags=["Monitoring"])
+app.include_router(terminal_router, prefix=f"{settings.API_PREFIX}/terminal", tags=["Terminal"])
 
 
 @app.get(f"{settings.API_PREFIX}/health")

@@ -16,12 +16,8 @@ celery_app = Celery(
     "hosting_control",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
-    include=[
-        "hosting_control.main_controller.application.tasks.provisioning",
-        "hosting_control.main_controller.application.tasks.backup",
-        "hosting_control.main_controller.application.tasks.monitoring",
-        "hosting_control.main_controller.application.tasks.ssl",
-        "hosting_control.main_controller.application.tasks.billing",
+include=[
+        "hosting_control.main_controller.core.tasks",
     ],
 )
 
