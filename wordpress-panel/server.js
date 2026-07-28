@@ -39,12 +39,14 @@ const users = [
 
 // Simple auth middleware
 function authenticate(req, res, next) {
-  const token = req.headers.authorization;
-  if (!token) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
   try {
+    // Strip "Bearer " prefix if present
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
     const userData = JSON.parse(Buffer.from(token, "base64").toString());
     const user = users.find(
       (u) =>
