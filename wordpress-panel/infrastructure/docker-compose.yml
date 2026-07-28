@@ -1,0 +1,68 @@
+version: '3.8'
+
+# ============================================================
+# زیرساخت Nginx Reverse Proxy + SSL خودکار Let's Encrypt
+# ============================================================
+# این سرویس‌ها باید اول راه‌اندازی شوند:
+#   docker network create nginx-proxy
+#   cd infrastructure && docker-compose up -d
+# ============================================================
+
+services:
+  # ===== Nginx Reverse Proxy =====
+  # تمام درخواست‌های HTTP/HTTPS را دریافت کرده و بر اساس دامنه
+  # به کانتینر مناسب هدایت می‌کند. دیگه نیازی به پورت‌های مختلف نیست.
+  nginx-proxy:
+    image: nginxproxy/nginx-proxy:latest
+    container_name: nginx-proxy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - ./nginx/custom:/etc/nginx/custom:ro  # تنظیمات سفارشی (اختیاری)
+      - ./nginx/vhost.d:/etc/nginx/vhost.d  # تنظیمات اختصاصی هر دامنه
+      - ./nginx/html:/usr/share/nginx/html   # صفحات خطا
+      - ./nginx/certs:/etc/nginx/certs:ro    # گواهی‌های SSL
+      - ./nginx/conf.d:/etc/nginx/conf.d     # لاگ و تنظیمات اضافی
+    networks:
+      - nginx-proxy
+    labels:
+      - "com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ===== Acme Companion (SSL خودکار) =====
+  # به صورت خودکار برای هر دامنه گواهی Let's Encrypt صادر می‌کند
+  # و هر ۶۰ روز یکبار تمدید می‌کند.
+  acme-companion:
+    image: nginxproxy/acme-companion:latest
+    container_name: acme-companion
+    restart: always
+    environment:
+      - DEFAULT_EMAIL=admin@example.com  # ایمیل برای Let's Encrypt
+      - NGINX_PROXY_CONTAINER=nginx-proxy
+      - ACME_CA_URI=https://acme-v02.api.letsencrypt.org/directory
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./nginx/certs:/etc/nginx/certs       # ذخیره گواهی‌ها
+      - ./nginx/vhost.d:/etc/nginx/vhost.d
+      - ./nginx/html:/usr/share/nginx/html
+      - ./nginx/acme:/etc/acme.sh            # داده‌های acme.sh
+    networks:
+      - nginx-proxy
+    depends_on:
+      - nginx-proxy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  nginx-proxy:
+    external: true

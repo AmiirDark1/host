@@ -1,12 +1,11 @@
 const Docker = require('dockerode');
 const docker = new Docker();
 const os = require('os');
+const dns = require('dns');
 
 class DockerManager {
   constructor() {
     this.containers = new Map();
-    this.nextWpPort = 8080;
-    this.nextDbPort = 3307;
   }
 
   getServerIp() {
@@ -21,79 +20,147 @@ class DockerManager {
     return 'SERVER_IP';
   }
 
-  // Helper: escape path for use inside single quotes in shell commands
-  _escapePath(path) {
-    return path.replace(/'/g, "'\\\\''");
-  }
-
-  // Helper: clean terminal output while preserving UTF-8/Persian text
-  _cleanOutput(output) {
-    // Remove ANSI escape sequences
-    let cleaned = output.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '');
-    // Remove null bytes and other control chars (keep \t, \n, \r)
-    cleaned = cleaned.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
-    // Remove carriage returns
-    cleaned = cleaned.replace(/\r/g, '');
-    return cleaned.trim();
-  }
-
-  async getNextWpPort() {
-    const usedPorts = new Set();
-    try {
-      const containers = await docker.listContainers({ all: true });
-      for (const c of containers) {
-        if (c.Ports) {
-          for (const p of c.Ports) {
-            if (p.PublicPort) usedPorts.add(p.PublicPort);
-          }
-        }
+  // =================================================================
+  // بررسی DNS - چک می‌کند دامنه به IP سرور اشاره دارد یا نه
+  // =================================================================
+  async checkDomainDNS(domain) {
+    return new Promise((resolve) => {
+      // حذف پروتکل و مسیر اگر همراه دامنه آمده باشد
+      let cleanDomain = domain.replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim();
+      if (!cleanDomain) {
+        return resolve({ ok: false, error: 'دامنه معتبر نیست' });
       }
-    } catch (e) { /* ignore */ }
-    
-    let port = this.nextWpPort;
-    while (usedPorts.has(port)) port++;
-    this.nextWpPort = port + 1;
-    return port;
-  }
 
-  async getNextDbPort() {
-    const usedPorts = new Set();
-    try {
-      const containers = await docker.listContainers({ all: true });
-      for (const c of containers) {
-        if (c.Ports) {
-          for (const p of c.Ports) {
-            if (p.PublicPort) usedPorts.add(p.PublicPort);
-          }
+      const serverIp = this.getServerIp();
+
+      dns.resolve4(cleanDomain, (err, addresses) => {
+        if (err) {
+          return resolve({
+            ok: false,
+            error: `DNS برای ${cleanDomain} پیدا نشد (${err.code})`,
+            dnsCheck: false,
+            domain: cleanDomain
+          });
         }
-      }
-    } catch (e) { /* ignore */ }
-    
-    let port = this.nextDbPort;
-    while (usedPorts.has(port)) port++;
-    this.nextDbPort = port + 1;
-    return port;
-  }
 
-  async ensureNetwork() {
-    try {
-      const network = docker.getNetwork('wordpress-net');
-      const data = await network.inspect();
-      return network;
-    } catch (err) {
-      const network = await docker.createNetwork({
-        Name: 'wordpress-net',
-        Driver: 'bridge',
+        const matches = addresses.filter(ip => ip === serverIp);
+        if (matches.length === 0) {
+          return resolve({
+            ok: false,
+            error: `DNS ${cleanDomain} به این سرور اشاره نمی‌کند. آی‌پی‌های فعلی: ${addresses.join(', ')}`,
+            dnsCheck: false,
+            domain: cleanDomain,
+            resolvedIps: addresses,
+            serverIp
+          });
+        }
+
+        return resolve({
+          ok: true,
+          domain: cleanDomain,
+          dnsCheck: true,
+          resolvedIps: addresses,
+          serverIp,
+          message: `✅ DNS تأیید شد - ${cleanDomain} → ${serverIp}`
+        });
       });
-      return network;
+    });
+  }
+
+  // =================================================================
+  // بررسی وضعیت SSL برای یک دامنه
+  // =================================================================
+  async getDomainSSLStatus(domain) {
+    try {
+      const { exec } = require('child_process');
+      return new Promise((resolve) => {
+        // چک می‌کنیم آیا گواهی در پوشه certs وجود دارد
+        const certPath = `./infrastructure/nginx/certs/${domain}/fullchain.pem`;
+        const fs = require('fs');
+        
+        if (fs.existsSync(certPath)) {
+          // گواهی موجود است - تاریخ انقضا را چک می‌کنیم
+          try {
+            const certData = fs.readFileSync(
+              `./infrastructure/nginx/certs/${domain}/fullchain.pem`,
+              'utf-8'
+            );
+            // استخراج تاریخ انقضا از گواهی (ساده شده)
+            const expiryMatch = certData.match(/notAfter=(.+?)\n/);
+            const expiryDate = expiryMatch ? expiryMatch[1] : 'نامشخص';
+            
+            resolve({
+              status: 'active',
+              domain,
+              expiryDate,
+              message: `✅ SSL فعال است - ${domain}`
+            });
+          } catch (e) {
+            resolve({
+              status: 'error',
+              domain,
+              message: `⚠️ خطا در خواندن گواهی: ${e.message}`
+            });
+          }
+        } else {
+          resolve({
+            status: 'pending',
+            domain,
+            message: `⏳ SSL در حال صدور برای ${domain} (تا ۳۰ ثانیه طول می‌کشد)`
+          });
+        }
+      });
+    } catch (err) {
+      return { status: 'error', domain, message: err.message };
     }
   }
 
+  // =================================================================
+  // اطمینان از وجود شبکه‌های مورد نیاز
+  // =================================================================
+  async ensureNetworks() {
+    const networks = {};
+
+    // شبکه داخلی برای ارتباط WordPress-DB
+    try {
+      networks.internal = docker.getNetwork('wordpress-net');
+      await networks.internal.inspect();
+    } catch (err) {
+      networks.internal = await docker.createNetwork({
+        Name: 'wordpress-net',
+        Driver: 'bridge',
+        Internal: true,  // فقط داخلی - امنیت بیشتر
+      });
+    }
+
+    // شبکه عمومی برای Nginx Proxy
+    try {
+      networks.proxy = docker.getNetwork('nginx-proxy');
+      await networks.proxy.inspect();
+    } catch (err) {
+      console.log('⚠️ شبکه nginx-proxy وجود ندارد. لطفاً ابتدا زیرساخت را راه‌اندازی کنید:');
+      console.log('   cd infrastructure && bash setup.sh && docker-compose up -d');
+      throw new Error('شبکه nginx-proxy یافت نشد. لطفاً ابتدا زیرساخت را راه‌اندازی کنید.');
+    }
+
+    return networks;
+  }
+
+  // =================================================================
+  // ایجاد یک نمونه WordPress با دامنه
+  // =================================================================
   async createWordPressInstance(instanceName, userId, domain) {
-    const network = await this.ensureNetwork();
+    // اول DNS را چک می‌کنیم
+    const dnsCheck = await this.checkDomainDNS(domain);
+    if (!dnsCheck.ok) {
+      throw new Error(dnsCheck.error);
+    }
+
+    const networks = await this.ensureNetworks();
     const serverIp = this.getServerIp();
-    const wpPort = await this.getNextWpPort();
-    const dbPort = await this.getNextDbPort();
+
+    // تمیز کردن دامنه
+    let cleanDomain = domain.replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim();
 
     const dbName = `wp_db_${instanceName}`;
     const dbUser = `wp_user_${instanceName}`;
@@ -103,7 +170,7 @@ class DockerManager {
     const dbContainerName = `db-${instanceName}`;
 
     try {
-      // Create MySQL container with exposed port for external admin access
+      // ===== CREATE MYSQL DATABASE CONTAINER =====
       const dbContainer = await docker.createContainer({
         name: dbContainerName,
         Image: 'mysql:5.7',
@@ -113,31 +180,29 @@ class DockerManager {
           `MYSQL_USER=${dbUser}`,
           `MYSQL_PASSWORD=${dbPassword}`,
         ],
-        ExposedPorts: {
-          '3306/tcp': {},
-        },
         HostConfig: {
           NetworkMode: 'wordpress-net',
           RestartPolicy: { Name: 'always' },
-          PortBindings: {
-            '3306/tcp': [{ HostPort: String(dbPort) }],
-          },
         },
         Labels: {
           'wp-managed': 'true',
           'wp-user': userId,
           'wp-instance': instanceName,
           'wp-type': 'database',
+          'wp-domain': cleanDomain,
         },
       });
 
       await dbContainer.start();
-      console.log(`MySQL container ${dbContainerName} started on port ${dbPort}`);
+      console.log(`✅ MySQL ${dbContainerName} started`);
 
       // Wait for MySQL to be ready
       await new Promise(resolve => setTimeout(resolve, 10000));
 
-      // Create WordPress container with exposed port
+      // ===== CREATE WORDPRESS CONTAINER =====
+      // این کانتینر به دو شبکه متصل می‌شود:
+      // 1. wordpress-net (داخلی) - برای ارتباط با MySQL
+      // 2. nginx-proxy (عمومی) - برای دریافت ترافیک از Nginx
       const wpContainer = await docker.createContainer({
         name: containerName,
         Image: 'wordpress:latest',
@@ -146,73 +211,138 @@ class DockerManager {
           `WORDPRESS_DB_USER=${dbUser}`,
           `WORDPRESS_DB_PASSWORD=${dbPassword}`,
           `WORDPRESS_DB_NAME=${dbName}`,
-          `WORDPRESS_CONFIG_EXTRA=define('WP_SITEURL', 'http://${serverIp}:${wpPort}'); define('WP_HOME', 'http://${serverIp}:${wpPort}');`,
+
+          // ===== مهم: متغیرهای Nginx Proxy =====
+          `VIRTUAL_HOST=${cleanDomain}`,           // دامنه اصلی
+          `VIRTUAL_PORT=80`,                        // پورت داخلی وردپرس
+          `LETSENCRYPT_HOST=${cleanDomain}`,        // دامنه برای SSL
+          `LETSENCRYPT_EMAIL=admin@${cleanDomain}`, // ایمیل برای Let's Encrypt
+
+          // تنظیمات URL وردپرس با دامنه
+          `WORDPRESS_CONFIG_EXTRA=define('WP_SITEURL', 'https://${cleanDomain}'); define('WP_HOME', 'https://${cleanDomain}'); define('FORCE_SSL_ADMIN', true);`,
         ],
-        ExposedPorts: {
-          '80/tcp': {},
-        },
         HostConfig: {
-          NetworkMode: 'wordpress-net',
           RestartPolicy: { Name: 'always' },
-          PortBindings: {
-            '80/tcp': [{ HostPort: String(wpPort) }],
-          },
-          Links: [dbContainerName],
         },
         Labels: {
           'wp-managed': 'true',
           'wp-user': userId,
           'wp-instance': instanceName,
           'wp-type': 'wordpress',
-          'wp-domain': domain,
+          'wp-domain': cleanDomain,
         },
       });
 
       await wpContainer.start();
-      console.log(`WordPress container ${containerName} started on port ${wpPort} for ${domain}`);
+      console.log(`✅ WordPress ${containerName} started for ${cleanDomain}`);
+
+      // ===== CONNECT TO NETWORKS =====
+      // اتصال کانتینر وردپرس به شبکه داخلی
+      const wpInternalNet = docker.getNetwork('wordpress-net');
+      await wpInternalNet.connect({ Container: containerName });
+      console.log(`   📡 Connected ${containerName} to wordpress-net`);
+
+      // اتصال کانتینر وردپرس به شبکه Nginx Proxy
+      const wpProxyNet = docker.getNetwork('nginx-proxy');
+      await wpProxyNet.connect({ Container: containerName });
+      console.log(`   📡 Connected ${containerName} to nginx-proxy`);
+
+      // اتصال دیتابیس به شبکه داخلی (اگر نیاز است)
+      const dbInternalNet = docker.getNetwork('wordpress-net');
+      await dbInternalNet.connect({ Container: dbContainerName });
+      console.log(`   📡 Connected ${dbContainerName} to wordpress-net`);
+
+      // کمی صبر می‌کنیم تا Nginx Proxy کانتینر جدید را شناسایی کند
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       const key = `${userId}-${instanceName}`;
       const instance = {
         instanceName,
         userId,
-        domain,
-        wpPort,
-        dbPort,
+        domain: cleanDomain,
         wpContainerId: wpContainer.id,
         dbContainerId: dbContainer.id,
         wpContainerName: containerName,
         dbContainerName: dbContainerName,
         status: 'running',
-        url: `http://${serverIp}:${wpPort}`,
+        url: `https://${cleanDomain}`,
         serverIp,
+        sslStatus: 'pending',  // SSL در حال صدور
         createdAt: new Date(),
       };
       
       this.containers.set(key, instance);
+
+      // شروع بررسی SSL در پس‌زمینه (بعد از ۵ ثانیه چک می‌کند)
+      setTimeout(() => this.checkAndUpdateSSLStatus(instance), 5000);
+
       return instance;
     } catch (err) {
-      console.error('Error creating WordPress instance:', err);
+      console.error('❌ Error creating WordPress instance:', err);
       await this.cleanupFailedInstance(instanceName);
       throw err;
     }
   }
 
-  async createMultipleInstances(userId, count, domains) {
-    const instances = [];
-    for (let i = 0; i < count; i++) {
-      const instanceName = `${userId}-site-${i + 1}`;
-      const domain = domains[i] || `site${i + 1}.${userId}.local`;
-      try {
-        const instance = await this.createWordPressInstance(instanceName, userId, domain);
-        instances.push(instance);
-      } catch (err) {
-        console.error(`Failed to create instance ${instanceName}:`, err);
+  // =================================================================
+  // بررسی و بروزرسانی وضعیت SSL در پس‌زمینه
+  // =================================================================
+  async checkAndUpdateSSLStatus(instance) {
+    try {
+      const sslStatus = await this.getDomainSSLStatus(instance.domain);
+      // بروزرسانی در حافظه
+      for (const [key, val] of this.containers) {
+        if (val.instanceName === instance.instanceName) {
+          val.sslStatus = sslStatus.status;
+          break;
+        }
       }
+    } catch (e) {
+      console.log(`SSL check pending for ${instance.domain}: ${e.message}`);
     }
-    return instances;
   }
 
-  // Check if user owns a container
+  // =================================================================
+  // ایجاد چندین نمونه به صورت Bulk (3 یا 6 تایی)
+  // =================================================================
+  async createMultipleInstances(userId, count, domains) {
+    const instances = [];
+    const errors = [];
+
+    // اول DNS همه دامنه‌ها را چک می‌کنیم
+    for (let i = 0; i < count; i++) {
+      const dnsCheck = await this.checkDomainDNS(domains[i]);
+      if (!dnsCheck.ok) {
+        errors.push(`دامنه ${domains[i]}: ${dnsCheck.error}`);
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new Error('خطاهای DNS:\n' + errors.join('\n'));
+    }
+
+    // همه چک‌ها OK - می‌سازیم
+    for (let i = 0; i < count; i++) {
+      const instanceName = `${userId}-site-${i + 1}`;
+      try {
+        const instance = await this.createWordPressInstance(
+          instanceName,
+          userId,
+          domains[i]
+        );
+        instances.push(instance);
+      } catch (err) {
+        console.error(`❌ Failed to create instance ${instanceName}:`, err);
+        errors.push(`خطا در ساخت ${domains[i]}: ${err.message}`);
+      }
+    }
+
+    return { instances, errors };
+  }
+
+  // =================================================================
+  // بررسی مالکیت کانتینر توسط کاربر
+  // =================================================================
   async userOwnsContainer(containerName, userId) {
     try {
       const container = docker.getContainer(containerName);
@@ -224,12 +354,46 @@ class DockerManager {
     }
   }
 
+  // =================================================================
+  // متد کمکی: فرمان در کانتینر اجرا کن
+  // =================================================================
+  async _execInContainer(containerName, cmd) {
+    const container = docker.getContainer(containerName);
+    const exec = await container.exec({
+      Cmd: cmd,
+      AttachStdout: true,
+      AttachStderr: true,
+    });
+    const stream = await exec.start({ Tty: false, Detach: false });
+    return new Promise((resolve, reject) => {
+      let output = '';
+      stream.on('data', (chunk) => { output += chunk.toString(); });
+      stream.on('end', () => {
+        resolve(this._cleanOutput(output));
+      });
+      stream.on('error', (err) => reject(err.message));
+    });
+  }
+
+  _cleanOutput(output) {
+    let cleaned = output.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '');
+    cleaned = cleaned.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+    cleaned = cleaned.replace(/\r/g, '');
+    return cleaned.trim();
+  }
+
+  _escapePath(path) {
+    return path.replace(/'/g, "'\\\\''");
+  }
+
+  // =================================================================
   // File Manager - List directory contents
+  // =================================================================
   async listFiles(instanceName, containerType, path) {
     try {
       const containerName = containerType === 'db' ? `db-${instanceName}` : `wp-${instanceName}`;
-      const container = docker.getContainer(containerName);
       const escapedPath = this._escapePath(path);
+      const container = docker.getContainer(containerName);
       
       const exec = await container.exec({
         Cmd: ['sh', '-c', `ls -la '${escapedPath}' 2>&1`],
@@ -237,8 +401,7 @@ class DockerManager {
         AttachStderr: true,
       });
 
-      const startResult = await exec.start({ Tty: true, Detach: false, stdin: false });
-      const stream = startResult;
+      const stream = await exec.start({ Tty: true, Detach: false, stdin: false });
       
       return new Promise((resolve, reject) => {
         let output = '';
@@ -254,7 +417,9 @@ class DockerManager {
     }
   }
 
+  // =================================================================
   // Read file content from container
+  // =================================================================
   async readFile(instanceName, containerType, filePath) {
     try {
       const containerName = containerType === 'db' ? `db-${instanceName}` : `wp-${instanceName}`;
@@ -267,8 +432,7 @@ class DockerManager {
         AttachStderr: true,
       });
 
-      const startResult = await exec.start({ Tty: true, Detach: false, stdin: false });
-      const stream = startResult;
+      const stream = await exec.start({ Tty: true, Detach: false, stdin: false });
       
       return new Promise((resolve, reject) => {
         let output = '';
@@ -284,17 +448,17 @@ class DockerManager {
     }
   }
 
-  // Write file content to container using Docker's tar archive API
+  // =================================================================
+  // Write file to container using tar-stream (works on ALL containers)
+  // =================================================================
   async writeFile(instanceName, containerType, filePath, content) {
     try {
       const containerName = containerType === 'db' ? `db-${instanceName}` : `wp-${instanceName}`;
       const container = docker.getContainer(containerName);
       
-      // Use docker's putArchive (tar) to write files - bulletproof, works on any container
       const tar = require('tar-stream');
       const pack = tar.pack();
       
-      // Get the filename and the directory
       const normalizedPath = filePath.replace(/\\/g, '/');
       const lastSlash = normalizedPath.lastIndexOf('/');
       const dirPath = lastSlash > 0 ? normalizedPath.substring(0, lastSlash) : '/';
@@ -303,16 +467,13 @@ class DockerManager {
       pack.entry({ name: fileName }, Buffer.from(content, 'utf-8'));
       pack.finalize();
       
-      // Collect tar data into a buffer
       const chunks = [];
       for await (const chunk of pack) {
         chunks.push(chunk);
       }
       const tarBuffer = Buffer.concat(chunks);
       
-      await container.putArchive(tarBuffer, {
-        path: dirPath
-      });
+      await container.putArchive(tarBuffer, { path: dirPath });
       
       return { success: true, message: 'File saved successfully' };
     } catch (err) {
@@ -320,12 +481,16 @@ class DockerManager {
     }
   }
 
-  // Upload file to container
+  // =================================================================
+  // Upload file (alias for writeFile)
+  // =================================================================
   async uploadFile(instanceName, containerType, destPath, content) {
     return this.writeFile(instanceName, containerType, destPath, content);
   }
 
+  // =================================================================
   // Delete file/directory
+  // =================================================================
   async deleteFile(instanceName, containerType, filePath) {
     try {
       const containerName = containerType === 'db' ? `db-${instanceName}` : `wp-${instanceName}`;
@@ -338,23 +503,23 @@ class DockerManager {
         AttachStderr: true,
       });
 
-      const startResult = await exec.start({ Tty: true, Detach: false, stdin: false });
-      const stream = startResult;
+      const stream = await exec.start({ Tty: true, Detach: false, stdin: false });
       
-      return new Promise((resolve, reject) => {
-        let output = '';
-        stream.on('data', (chunk) => { output += chunk.toString(); });
+      return new Promise((resolve) => {
         stream.on('end', () => {
           resolve({ success: true, message: 'Deleted successfully' });
         });
-        stream.on('error', (err) => reject({ success: false, error: err.message }));
+        stream.on('error', (err) => resolve({ success: false, error: err.message }));
+        stream.resume();
       });
     } catch (err) {
       return { success: false, error: err.message };
     }
   }
 
+  // =================================================================
   // Create directory
+  // =================================================================
   async createDir(instanceName, containerType, dirPath) {
     try {
       const containerName = containerType === 'db' ? `db-${instanceName}` : `wp-${instanceName}`;
@@ -366,22 +531,23 @@ class DockerManager {
         AttachStderr: true,
       });
 
-      const startResult = await exec.start({ Tty: true, Detach: false, stdin: false });
-      const stream = startResult;
+      const stream = await exec.start({ Tty: true, Detach: false, stdin: false });
       
-      return new Promise((resolve, reject) => {
-        let output = '';
-        stream.on('data', (chunk) => { output += chunk.toString(); });
+      return new Promise((resolve) => {
         stream.on('end', () => {
           resolve({ success: true, message: 'Directory created' });
         });
-        stream.on('error', (err) => reject({ success: false, error: err.message }));
+        stream.on('error', (err) => resolve({ success: false, error: err.message }));
+        stream.resume();
       });
     } catch (err) {
       return { success: false, error: err.message };
     }
   }
 
+  // =================================================================
+  // Cleanup after failed creation
+  // =================================================================
   async cleanupFailedInstance(instanceName) {
     try {
       const dbContainer = docker.getContainer(`db-${instanceName}`);
@@ -393,12 +559,36 @@ class DockerManager {
     } catch (e) { /* ignore */ }
   }
 
+  // =================================================================
+  // حذف کامل یک نمونه
+  // =================================================================
   async deleteInstance(instanceName) {
     try {
-      await this.stopContainer(`db-${instanceName}`);
-      await this.removeContainer(`db-${instanceName}`);
-      await this.stopContainer(`wp-${instanceName}`);
-      await this.removeContainer(`wp-${instanceName}`);
+      const containers = [
+        { name: `db-${instanceName}`, type: 'database' },
+        { name: `wp-${instanceName}`, type: 'wordpress' },
+      ];
+
+      for (const c of containers) {
+        try {
+          const container = docker.getContainer(c.name);
+          const info = await container.inspect();
+
+          // قطع اتصال از شبکه Nginx Proxy (برای کانتینر وردپرس)
+          if (c.type === 'wordpress') {
+            try {
+              const proxyNet = docker.getNetwork('nginx-proxy');
+              await proxyNet.disconnect({ Container: c.name, Force: true });
+            } catch (e) { /* ignore */ }
+          }
+
+          await container.stop({ t: 5 }); // 5 ثانیه تایم‌اوت برای graceful shutdown
+          await container.remove({ v: true }); // حذف ولوم‌های مرتبط
+          console.log(`✅ Container ${c.name} removed`);
+        } catch (e) {
+          if (e.statusCode !== 404) console.error(`Error removing ${c.name}:`, e.message);
+        }
+      }
 
       // Clean up from in-memory map
       for (const [key, value] of this.containers) {
@@ -407,132 +597,163 @@ class DockerManager {
           break;
         }
       }
-      return true;
+
+      return { success: true, message: 'Instance deleted successfully' };
     } catch (err) {
       console.error('Error deleting instance:', err);
       throw err;
     }
   }
 
-  async stopContainer(name) {
+  // =================================================================
+  // استارت/استاپ یک نمونه
+  // =================================================================
+  async startInstance(instanceName) {
+    const containers = [`wp-${instanceName}`, `db-${instanceName}`];
+    for (const name of containers) {
+      try {
+        const container = docker.getContainer(name);
+        await container.start();
+        console.log(`▶️ ${name} started`);
+      } catch (e) {
+        if (e.statusCode !== 304) throw e; // 304 = already started
+      }
+    }
+    return { success: true, message: 'Instance started' };
+  }
+
+  async stopInstance(instanceName) {
+    const containers = [`wp-${instanceName}`, `db-${instanceName}`];
+    for (const name of containers) {
+      try {
+        const container = docker.getContainer(name);
+        await container.stop({ t: 10 });
+        console.log(`⏹️ ${name} stopped`);
+      } catch (e) {
+        if (e.statusCode !== 304) throw e; // 304 = already stopped
+      }
+    }
+    return { success: true, message: 'Instance stopped' };
+  }
+
+  // =================================================================
+  // دریافت لاگ‌های یک نمونه
+  // =================================================================
+  async getInstanceLogs(instanceName, type = 'wp', lines = 50) {
+    const containerName = type === 'db' ? `db-${instanceName}` : `wp-${instanceName}`;
     try {
-      const container = docker.getContainer(name);
-      await container.stop();
+      const container = docker.getContainer(containerName);
+      const logs = await container.logs({
+        stdout: true,
+        stderr: true,
+        tail: lines,
+        timestamps: true,
+      });
+      return { success: true, logs: logs.toString('utf-8') };
     } catch (err) {
-      if (err.statusCode !== 304) throw err;
+      return { success: false, error: err.message };
     }
   }
 
-  async removeContainer(name) {
-    try {
-      const container = docker.getContainer(name);
-      await container.remove({ force: true });
-    } catch (err) {
-      if (err.statusCode !== 404) throw err;
-    }
-  }
-
+  // =================================================================
+  // لیست همه نمونه‌ها
+  // =================================================================
   async listInstances(userId = null) {
-    const allContainers = await docker.listContainers({
-      all: true,
-      filters: { label: ['wp-managed=true'] },
-    });
+    try {
+      const allContainers = await docker.listContainers({
+        all: true,
+        filters: { label: ['wp-managed=true'] },
+      });
 
-    const instances = {};
-    for (const containerInfo of allContainers) {
-      const labels = containerInfo.Labels;
-      const key = `${labels['wp-user']}-${labels['wp-instance']}`;
+      const instances = {};
+      for (const containerInfo of allContainers) {
+        const labels = containerInfo.Labels;
+        const key = `${labels['wp-user']}-${labels['wp-instance']}`;
 
-      if (!instances[key]) {
-        let wpPort = null;
-        let dbPort = null;
-        let url = null;
-        const serverIp = this.getServerIp();
-
-        // Extract ports from container info
-        if (containerInfo.Ports) {
-          for (const p of containerInfo.Ports) {
-            if (p.PrivatePort === 80) {
-              wpPort = p.PublicPort;
-              url = `http://${serverIp}:${wpPort}`;
-            }
-            if (p.PrivatePort === 3306) {
-              dbPort = p.PublicPort;
-            }
-          }
+        if (!instances[key]) {
+          instances[key] = {
+            instanceName: labels['wp-instance'],
+            userId: labels['wp-user'],
+            domain: labels['wp-domain'] || null,
+            status: 'unknown',
+            wpContainerId: null,
+            dbContainerId: null,
+            url: labels['wp-domain'] ? `https://${labels['wp-domain']}` : null,
+            serverIp: this.getServerIp(),
+            sslStatus: 'checking',
+            createdAt: null,
+          };
         }
 
-        instances[key] = {
-          instanceName: labels['wp-instance'],
-          userId: labels['wp-user'],
-          domain: labels['wp-domain'] || null,
-          status: containerInfo.State,
-          wpPort,
-          dbPort,
-          wpContainerId: null,
-          dbContainerId: null,
-          url,
-          serverIp,
-          createdAt: null,
-        };
-      }
-
-      if (labels['wp-type'] === 'wordpress') {
-        instances[key].wpContainerId = containerInfo.Id;
-        instances[key].status = containerInfo.State;
-        // Update URL/port from the running container
-        if (containerInfo.Ports) {
-          for (const p of containerInfo.Ports) {
-            if (p.PrivatePort === 80 && p.PublicPort) {
-              instances[key].wpPort = p.PublicPort;
-              instances[key].url = `http://${instances[key].serverIp}:${p.PublicPort}`;
-            }
-          }
-        }
-      } else if (labels['wp-type'] === 'database') {
-        instances[key].dbContainerId = containerInfo.Id;
-        if (containerInfo.Ports) {
-          for (const p of containerInfo.Ports) {
-            if (p.PrivatePort === 3306 && p.PublicPort) {
-              instances[key].dbPort = p.PublicPort;
-            }
-          }
+        if (labels['wp-type'] === 'wordpress') {
+          instances[key].wpContainerId = containerInfo.Id;
+          instances[key].status = containerInfo.State;
+        } else if (labels['wp-type'] === 'database') {
+          instances[key].dbContainerId = containerInfo.Id;
         }
       }
-    }
 
-    let result = Object.values(instances);
-    if (userId) {
-      result = result.filter(inst => inst.userId === userId);
+      let result = Object.values(instances);
+      if (userId) {
+        result = result.filter(inst => inst.userId === userId);
+      }
+
+      // چک وضعیت SSL برای هر نمونه (در پس‌زمینه)
+      for (const inst of result) {
+        if (inst.domain && inst.status === 'running') {
+          this.checkAndUpdateSSLStatus(inst);
+        }
+      }
+
+      return result;
+    } catch (err) {
+      console.error('Error listing instances:', err);
+      return [];
     }
-    return result;
   }
 
+  // =================================================================
+  // آمار سیستم
+  // =================================================================
   async getStats() {
-    const allContainers = await docker.listContainers({
-      all: true,
-      filters: { label: ['wp-managed=true'] },
-    });
-    
-    const stats = {
-      totalContainers: allContainers.length,
-      running: allContainers.filter(c => c.State === 'running').length,
-      stopped: allContainers.filter(c => c.State === 'exited').length,
-      users: new Set(),
-      instances: 0,
-      wordpressContainers: allContainers.filter(c => c.Labels['wp-type'] === 'wordpress').length,
-      databaseContainers: allContainers.filter(c => c.Labels['wp-type'] === 'database').length,
-      serverIp: this.getServerIp(),
-    };
+    try {
+      const allContainers = await docker.listContainers({
+        all: true,
+        filters: { label: ['wp-managed=true'] },
+      });
+      
+      const stats = {
+        totalContainers: allContainers.length,
+        running: allContainers.filter(c => c.State === 'running').length,
+        stopped: allContainers.filter(c => c.State === 'exited').length,
+        users: new Set(),
+        wordpressContainers: allContainers.filter(c => c.Labels['wp-type'] === 'wordpress').length,
+        databaseContainers: allContainers.filter(c => c.Labels['wp-type'] === 'database').length,
+        serverIp: this.getServerIp(),
+        activeDomains: 0,
+      };
 
-    for (const c of allContainers) {
-      stats.users.add(c.Labels['wp-user']);
+      for (const c of allContainers) {
+        stats.users.add(c.Labels['wp-user']);
+        if (c.Labels['wp-domain'] && c.State === 'running') {
+          stats.activeDomains++;
+        }
+      }
+      
+      stats.instances = stats.users.size;
+      stats.users = stats.users.size;
+
+      return stats;
+    } catch (err) {
+      return {
+        totalContainers: 0,
+        running: 0,
+        stopped: 0,
+        users: 0,
+        instances: 0,
+        error: err.message,
+      };
     }
-    
-    stats.instances = stats.users.size;
-    stats.users = stats.users.size;
-
-    return stats;
   }
 }
 

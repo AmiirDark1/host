@@ -424,6 +424,50 @@
       color: #721c24;
     }
 
+    .status-ssl-active {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status-ssl-pending {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .status-ssl-error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .dns-check-result {
+      margin-top: 8px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      display: none;
+    }
+
+    .dns-check-result.success {
+      display: block;
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .dns-check-result.error {
+      display: block;
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .dns-check-result.checking {
+      display: block;
+      background: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+    }
+
     .instance-link {
       color: #3498db;
       text-decoration: none;
@@ -837,8 +881,10 @@
         <div class="action-buttons">
           <input type="text" id="instanceNameInput" placeholder="نام کانتینر (مثلا: my-site)" style="flex:0.5;">
           <input type="text" id="singleDomainInput" class="domain-input" placeholder="دامنه (مثلا: example.com)" style="flex:1;" dir="ltr">
+          <button onclick="checkDnsAndCreate()" class="btn btn-info" id="dnsCheckBtn" style="white-space:nowrap;">🔍 بررسی DNS</button>
           <button onclick="createSingleInstance()" class="btn btn-success" id="createSingleBtn">ایجاد کانتینر</button>
         </div>
+        <div id="dnsCheckResult" class="dns-check-result"></div>
       </div>
 
       <!-- Action Bar - Bulk Instances -->
@@ -1140,6 +1186,52 @@
       
       container.innerHTML = html;
       container.classList.add('show');
+    }
+
+    async function checkDnsAndCreate() {
+      const domain = document.getElementById('singleDomainInput').value.trim().toLowerCase();
+      const dnsResult = document.getElementById('dnsCheckResult');
+      
+      if (!domain) {
+        dnsResult.className = 'dns-check-result error';
+        dnsResult.textContent = '❌ لطفاً دامنه را وارد کنید';
+        return;
+      }
+
+      const btn = document.getElementById('dnsCheckBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"></span> بررسی...';
+      dnsResult.className = 'dns-check-result checking';
+      dnsResult.textContent = '🔍 در حال بررسی DNS...';
+
+      try {
+        const res = await apiCall('/check-dns', {
+          method: 'POST',
+          body: JSON.stringify({ domain })
+        });
+
+        const data = await res.json();
+
+        if (data.ok) {
+          dnsResult.className = 'dns-check-result success';
+          dnsResult.textContent = `✅ ${data.message}`;
+          showAlert('✅ DNS تأیید شد! حالا می‌توانید کانتینر را ایجاد کنید.', 'success');
+        } else {
+          dnsResult.className = 'dns-check-result error';
+          dnsResult.textContent = `❌ ${data.error}`;
+          if (data.resolvedIps) {
+            dnsResult.innerHTML += `<br>📡 آی‌پی‌های فعلی: ${data.resolvedIps.join(', ')}`;
+            dnsResult.innerHTML += `<br>🖥️ آی‌پی سرور: ${data.serverIp}`;
+            dnsResult.innerHTML += `<br>💡 لطفاً رکورد A دامنه را به ${data.serverIp}指向 کنید`;
+          }
+        }
+      } catch (err) {
+        dnsResult.className = 'dns-check-result error';
+        dnsResult.textContent = `❌ خطا: ${err.message}`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🔍 بررسی DNS';
+      }
     }
 
     async function createSingleInstance() {
