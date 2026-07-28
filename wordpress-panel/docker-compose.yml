@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  wordpress-panel:
+    build: .
+    container_name: wordpress-panel
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount Docker socket so the app can control Docker from inside the container
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    # Give enough time for Docker operations
+    stop_grace_period: 60s
