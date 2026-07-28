@@ -10,6 +10,7 @@ interface User {
   role: string
   is_verified: boolean
   two_factor_enabled: boolean
+  created_at?: string
 }
 
 interface AuthState {
