@@ -21,7 +21,6 @@ cryptography==42.0.5
 # Async Task Queue
 celery[redis]==5.4.0
 redis[hiredis]==5.0.4
-redbeat==0.0.1
 flower==2.0.1
 
 # HTTP Clients

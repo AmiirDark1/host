@@ -123,7 +123,7 @@ services:
       context: .
       dockerfile: docker/api.Dockerfile
     container_name: hosting-celery-beat
-    command: celery -A hosting_control.main_controller.core.celery_app beat --loglevel=info --scheduler=redbeat.RedBeatScheduler
+    command: celery -A hosting_control.main_controller.core.celery_app beat --loglevel=info
     volumes:
       - ./src:/app/src
       - ./secrets:/app/secrets:ro
