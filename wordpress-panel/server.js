@@ -108,6 +108,18 @@ app.get("/api/ssl-status", authenticate, async (req, res) => {
 });
 
 // =================================================================
+// Server IP (public - no auth needed)
+// =================================================================
+app.get("/api/server-ip", (req, res) => {
+  try {
+    const ip = dockerManager.getServerIp();
+    res.json({ ip });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =================================================================
 // Server Info
 // =================================================================
 app.get("/api/server-info", authenticate, async (req, res) => {
