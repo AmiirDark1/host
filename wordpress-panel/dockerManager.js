@@ -223,9 +223,14 @@ class DockerManager {
       // اعمال محدودیت‌های منابع (CPU, RAM, Disk) روی کانتینر دیتابیس
       // محدودیت‌ها از فایل پیکربندی limits-config.json خوانده می‌شوند
       const dbLimits = resourceLimits.getContainerHostConfig('db');
+      let dbImage = 'mariadb:10.11';
+      // اگر متغیر محیطی MIRROR_REGISTRY ست شده باشه ازش استفاده کن (برای سرورهای چین)
+      if (process.env.MIRROR_REGISTRY) {
+        dbImage = `${process.env.MIRROR_REGISTRY}/library/mariadb:10.11`;
+      }
       const dbContainer = await docker.createContainer({
         name: dbContainerName,
-        Image: 'mariadb:10.11',
+        Image: dbImage,
         Env: [
           `MYSQL_ROOT_PASSWORD=${dbPassword}`,
           `MYSQL_DATABASE=${dbName}`,
@@ -259,9 +264,14 @@ class DockerManager {
       // اعمال محدودیت‌های منابع (CPU, RAM, Disk) روی کانتینر وردپرس
       // محدودیت‌ها از فایل پیکربندی limits-config.json خوانده می‌شوند
       const wpLimits = resourceLimits.getContainerHostConfig('wp');
+      let wpImage = 'wordpress:latest';
+      // اگر متغیر محیطی MIRROR_REGISTRY ست شده باشه ازش استفاده کن (برای سرورهای چین)
+      if (process.env.MIRROR_REGISTRY) {
+        wpImage = `${process.env.MIRROR_REGISTRY}/library/wordpress:latest`;
+      }
       const wpContainer = await docker.createContainer({
         name: containerName,
-        Image: 'wordpress:latest',
+        Image: wpImage,
         Env: [
           `WORDPRESS_DB_HOST=${dbContainerName}:3306`,
           `WORDPRESS_DB_USER=${dbUser}`,

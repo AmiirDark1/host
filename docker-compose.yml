@@ -92,6 +92,8 @@ services:
       - ./nginx/certs:/app/infrastructure/nginx/certs
     environment:
       - NODE_ENV=production
+      - MIRROR_REGISTRY=docker.m.daocloud.io
+      - SERVER_IP=2.144.26.36
     restart: unless-stopped
     stop_grace_period: 60s
     privileged: true
