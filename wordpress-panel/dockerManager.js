@@ -301,20 +301,15 @@ class DockerManager {
       console.log(`✅ WordPress ${containerName} started for ${cleanDomain}`);
 
       // ===== CONNECT TO NETWORKS =====
-      // اتصال کانتینر وردپرس به شبکه داخلی
+      // اتصال کانتینر وردپرس به شبکه داخلی wordpress-net (برای ارتباط با دیتابیس)
       const wpInternalNet = docker.getNetwork('wordpress-net');
       await wpInternalNet.connect({ Container: containerName });
       console.log(`   📡 Connected ${containerName} to wordpress-net`);
 
-      // اتصال کانتینر وردپرس به شبکه Nginx Proxy
+      // اتصال کانتینر وردپرس به شبکه Nginx Proxy (برای دریافت ترافیک)
       const wpProxyNet = docker.getNetwork('nginx-proxy');
       await wpProxyNet.connect({ Container: containerName });
       console.log(`   📡 Connected ${containerName} to nginx-proxy`);
-
-      // اتصال دیتابیس به شبکه داخلی (اگر نیاز است)
-      const dbInternalNet = docker.getNetwork('wordpress-net');
-      await dbInternalNet.connect({ Container: dbContainerName });
-      console.log(`   📡 Connected ${dbContainerName} to wordpress-net`);
 
       // کمی صبر می‌کنیم تا Nginx Proxy کانتینر جدید را شناسایی کند
       await new Promise(resolve => setTimeout(resolve, 2000));
