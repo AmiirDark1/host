@@ -440,7 +440,6 @@ app.post("/api/resource-usage/update", authenticate, adminOnly, async (req, res)
 // =================================================================
 // ==================== FILE MANAGER API ============================
 // =================================================================
-REPLACE
 
 app.get("/api/filemanager/list", authenticate, async (req, res) => {
   try {
