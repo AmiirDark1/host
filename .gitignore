@@ -1,3 +1,11 @@
 node_modules/
 **/node_modules/
 .env
+
+# Nginx infrastructure directories (auto-created by setup.sh)
+nginx/certs/
+nginx/acme/
+nginx/conf.d/
+nginx/vhost.d/
+nginx/custom/
+nginx/html/

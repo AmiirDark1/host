@@ -1,0 +1,103 @@
+version: '3.8'
+
+# ============================================================
+# WordPress Panel - Complete Stack
+# ============================================================
+# با یک دستور `docker-compose up -d` همه سرویس‌ها بالا می‌آیند:
+#   - Nginx Reverse Proxy (دریافت ترافیک HTTP/HTTPS)
+#   - Acme Companion (صدور خودکار SSL Let's Encrypt)
+#   - WordPress Panel (پنل مدیریت کانتینرها)
+# ============================================================
+
+networks:
+  # شبکه عمومی برای Nginx Proxy - همه کانتینرها به این متصل می‌شوند
+  nginx-proxy:
+    name: nginx-proxy
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+services:
+  # ===================================================================
+  # 1. Nginx Reverse Proxy
+  # ===================================================================
+  # تمام درخواست‌های HTTP/HTTPS را دریافت کرده و بر اساس دامنه
+  # به کانتینر وردپرس مناسب هدایت می‌کند.
+  nginx-proxy:
+    image: nginxproxy/nginx-proxy:latest
+    container_name: nginx-proxy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - ./nginx/custom:/etc/nginx/custom:ro
+      - ./nginx/vhost.d:/etc/nginx/vhost.d
+      - ./nginx/html:/usr/share/nginx/html
+      - ./nginx/certs:/etc/nginx/certs:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d
+    networks:
+      - nginx-proxy
+    labels:
+      - "com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ===================================================================
+  # 2. Acme Companion (SSL خودکار Let's Encrypt)
+  # ===================================================================
+  # به صورت خودکار برای هر دامنه گواهی Let's Encrypt صادر می‌کند
+  # و هر ۶۰ روز یکبار تمدید می‌کند.
+  acme-companion:
+    image: nginxproxy/acme-companion:latest
+    container_name: acme-companion
+    restart: always
+    environment:
+      - DEFAULT_EMAIL=admin@example.com
+      - NGINX_PROXY_CONTAINER=nginx-proxy
+      - ACME_CA_URI=https://acme-v02.api.letsencrypt.org/directory
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./nginx/certs:/etc/nginx/certs
+      - ./nginx/vhost.d:/etc/nginx/vhost.d
+      - ./nginx/html:/usr/share/nginx/html
+      - ./nginx/acme:/etc/acme.sh
+    networks:
+      - nginx-proxy
+    depends_on:
+      - nginx-proxy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ===================================================================
+  # 3. WordPress Panel (پنل مدیریت)
+  # ===================================================================
+  # پنل مدیریتی برای ساخت/مدیریت کانتینرهای وردپرس
+  wordpress-panel:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wordpress-panel
+    ports:
+      - "3000:3000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./nginx/certs:/app/infrastructure/nginx/certs
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    stop_grace_period: 60s
+    privileged: true
+    networks:
+      - nginx-proxy
+    depends_on:
+      - nginx-proxy
+      - acme-companion
