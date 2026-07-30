@@ -3,7 +3,7 @@
 # =============================================
 
 # ---------- Stage 1: Build React Client ----------
-FROM node:18-alpine AS client-builder
+FROM node:22-alpine AS client-builder
 WORKDIR /app/client
 
 # Create output directory matching vite.config.js (outDir: '../wordpress-panel/public')
@@ -18,7 +18,7 @@ COPY client/ ./
 RUN npm run build
 
 # ---------- Stage 2: Build & Run Server ----------
-FROM node:18-alpine
+FROM node:22-alpine
 
 WORKDIR /app
 
