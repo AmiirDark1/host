@@ -46,9 +46,18 @@ class DockerManager {
       }
 
       const serverIp = this.getServerIp();
+      console.log(`🔍 DNS Check - Domain: ${cleanDomain}, ServerIP: ${serverIp}`);
+
+      // سعی کن با dig resolve کنی (دقیق‌تر از dns.resolve4 توی کانتینر)
+      try {
+        const { execSync } = require('child_process');
+        const digOutput = execSync(`nslookup ${cleanDomain} 2>/dev/null || echo 'FAILED'`, { encoding: 'utf-8', timeout: 5000 });
+        console.log(`📡 dig output: ${digOutput.substring(0, 200)}`);
+      } catch(e) {}
 
       dns.resolve4(cleanDomain, (err, addresses) => {
         if (err) {
+          console.error(`❌ DNS resolve failed for ${cleanDomain}: ${err.code}`);
           return resolve({
             ok: false,
             error: `DNS برای ${cleanDomain} پیدا نشد (${err.code})`,
@@ -57,8 +66,34 @@ class DockerManager {
           });
         }
 
-        const matches = addresses.filter(ip => ip === serverIp);
+        // trim همه آیپی‌ها برای مقایسه دقیق
+        const trimmedAddresses = addresses.map(ip => ip.trim());
+        const trimmedServerIp = serverIp.trim();
+        const matches = trimmedAddresses.filter(ip => ip === trimmedServerIp);
+
+        console.log(`   📊 resolved: [${trimmedAddresses.join(', ')}], server: [${trimmedServerIp}], matches: ${matches.length}`);
+
         if (matches.length === 0) {
+          // راه دوم: سعی کن از طریق curl api.ipify.org آیپی رو بگیری و دوباره مقایسه کن
+          try {
+            const { execSync } = require('child_process');
+            const externalIp = execSync('curl -s --max-time 5 https://api.ipify.org', { encoding: 'utf-8' }).trim();
+            console.log(`   🌐 external IP from api.ipify: ${externalIp}`);
+            
+            const extMatch = trimmedAddresses.filter(ip => ip === externalIp);
+            if (extMatch.length > 0) {
+              console.log(`   ✅ DNS matches external IP (${externalIp})`);
+              return resolve({
+                ok: true,
+                domain: cleanDomain,
+                dnsCheck: true,
+                resolvedIps: addresses,
+                serverIp: externalIp,
+                message: `✅ DNS تأیید شد - ${cleanDomain} → ${externalIp}`
+              });
+            }
+          } catch(e) {}
+
           return resolve({
             ok: false,
             error: `DNS ${cleanDomain} به این سرور اشاره نمی‌کند. آی‌پی‌های فعلی: ${addresses.join(', ')}`,
