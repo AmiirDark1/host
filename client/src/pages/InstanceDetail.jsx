@@ -15,8 +15,7 @@ export default function InstanceDetail() {
   const [logsLoading, setLogsLoading] = useState(false);
   const [resourceUsage, setResourceUsage] = useState(null);
 
-  // File Manager state
-  const [fmContainerType, setFmContainerType] = useState("wp");
+  // File Manager state - always locked to wp /var/www/html
   const [fmPath, setFmPath] = useState("/");
   const [fmEntries, setFmEntries] = useState([]);
   const [fmLoading, setFmLoading] = useState(false);
@@ -38,7 +37,7 @@ export default function InstanceDetail() {
 
   useEffect(() => {
     if (tab === "files" && instance?.status === "running") loadFmList();
-  }, [tab, fmPath, fmContainerType]);
+  }, [tab, fmPath]);
 
   async function loadInstance() {
     setLoading(true);
@@ -102,7 +101,7 @@ export default function InstanceDetail() {
     setFmError(null);
     try {
       const data = await apiCall(
-        `/filemanager/list?instanceName=${instanceName}&containerType=${fmContainerType}&path=${encodeURIComponent(fmPath)}`,
+        `/filemanager/list?instanceName=${instanceName}&containerType=wp&path=${encodeURIComponent(fmPath)}`,
       );
       if (data.success) {
         setFmEntries(parseLsOutput(data.output));
@@ -222,7 +221,7 @@ export default function InstanceDetail() {
   async function openFile(entry) {
     try {
       const data = await apiCall(
-        `/filemanager/read?instanceName=${instanceName}&containerType=${fmContainerType}&filePath=${encodeURIComponent(entry.path)}`,
+        `/filemanager/read?instanceName=${instanceName}&containerType=wp&filePath=${encodeURIComponent(entry.path)}`,
       );
       if (data.success) {
         setFmEditing({ path: entry.path, name: entry.name });
@@ -242,7 +241,7 @@ export default function InstanceDetail() {
         method: "POST",
         body: {
           instanceName,
-          containerType: fmContainerType,
+          containerType: "wp",
           filePath: fmEditing.path,
           content: fmEditContent,
         },
@@ -267,7 +266,7 @@ export default function InstanceDetail() {
         method: "DELETE",
         body: {
           instanceName,
-          containerType: fmContainerType,
+          containerType: "wp",
           filePath: entry.path,
         },
       });
@@ -291,7 +290,7 @@ export default function InstanceDetail() {
         method: "POST",
         body: {
           instanceName,
-          containerType: fmContainerType,
+          containerType: "wp",
           dirPath: newPath,
         },
       });
@@ -323,7 +322,7 @@ export default function InstanceDetail() {
           method: "POST",
           body: {
             instanceName,
-            containerType: fmContainerType,
+            containerType: "wp",
             destPath,
             content,
           },
@@ -722,20 +721,6 @@ export default function InstanceDetail() {
                 alignItems: "center",
               }}
             >
-              <select
-                className="form-select"
-                style={{ width: "auto", padding: "6px 10px" }}
-                value={fmContainerType}
-                onChange={(e) => {
-                  setFmContainerType(e.target.value);
-                  setFmHistory(["/"]);
-                  setFmPath("/");
-                }}
-              >
-                <option value="wp">📦 وردپرس</option>
-                <option value="db">🗄️ دیتابیس</option>
-              </select>
-
               <div
                 className="flex"
                 style={{ gap: 4, alignItems: "center", flex: 1 }}
@@ -754,10 +739,7 @@ export default function InstanceDetail() {
                     direction: "ltr",
                   }}
                 >
-                  {fmContainerType === "wp"
-                    ? "/var/www/html"
-                    : "/var/lib/mysql"}
-                  {fmPath}
+                  /var/www/html{fmPath}
                 </span>
               </div>
 
@@ -792,7 +774,7 @@ export default function InstanceDetail() {
                   <h3>خطا</h3>
                   <p>{fmError}</p>
                   <p style={{ fontSize: 12, color: "var(--gray-400)" }}>
-                    توجه: کانتینر وردپرس باید در حال اجرا باشد
+                    توجه: کانتینر "{instanceName}_wp" باید در حال اجرا باشد
                   </p>
                 </div>
               ) : fmEntries.length === 0 ? (
