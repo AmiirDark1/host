@@ -22,8 +22,8 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-# Install Docker CLI so dockerode can talk to the host Docker
-RUN apk add --no-cache docker-cli
+# Install Docker CLI so dockerode can talk to the host Docker + curl for IP detection
+RUN apk add --no-cache docker-cli curl
 
 # Copy server package files and install dependencies
 COPY wordpress-panel/package*.json ./

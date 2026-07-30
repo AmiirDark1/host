@@ -91,6 +91,8 @@ services:
       - ./nginx/certs:/app/infrastructure/nginx/certs
     environment:
       - NODE_ENV=production
+      - SERVER_IP=${SERVER_IP}
+      # اگر SERVER_IP ست نشده، خود کد api.ipify.org رو میزنه (curl داخل کانتینر هست)
     restart: unless-stopped
     stop_grace_period: 60s
     privileged: true

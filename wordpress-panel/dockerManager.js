@@ -10,6 +10,19 @@ class DockerManager {
   }
 
   getServerIp() {
+    // اول از متغیر محیطی بخون (وقتی توی Docker هستیم)
+    if (process.env.SERVER_IP) {
+      return process.env.SERVER_IP;
+    }
+    // بعد سعی کن از اینترنت بگیری
+    try {
+      const { execSync } = require('child_process');
+      const ip = execSync('curl -s --max-time 5 https://api.ipify.org', { encoding: 'utf-8' }).trim();
+      if (ip && ip.match(/^\d+\.\d+\.\d+\.\d+$/)) {
+        return ip;
+      }
+    } catch {}
+    // آخرین راه: از interface های شبکه بخون
     const interfaces = os.networkInterfaces();
     for (const name of Object.keys(interfaces)) {
       for (const iface of interfaces[name]) {
