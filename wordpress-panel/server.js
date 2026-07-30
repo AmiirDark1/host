@@ -3,6 +3,7 @@ const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
 const dockerManager = require("./dockerManager");
+const resourceLimits = require("./resourceLimits");
 
 const app = express();
 const PORT = 3000;
@@ -287,8 +288,96 @@ app.get("/api/users", authenticate, adminOnly, (req, res) => {
 });
 
 // =================================================================
+// ==================== RESOURCE LIMITS API =========================
+// =================================================================
+
+// دریافت تنظیمات فعلی محدودیت منابع
+app.get("/api/limits", authenticate, adminOnly, async (req, res) => {
+  try {
+    const limits = resourceLimits.getLimits();
+    const defaults = resourceLimits.getDefaults();
+    res.json({ limits, defaults });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ذخیره تنظیمات جدید محدودیت منابع
+app.post("/api/limits", authenticate, adminOnly, async (req, res) => {
+  try {
+    const newLimits = req.body;
+    const result = resourceLimits.saveLimits(newLimits);
+    if (!result.success) {
+      return res.status(500).json({ error: result.error });
+    }
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// دریافت مصرف منابع یک کانتینر خاص
+app.get("/api/resource-usage/:containerName", authenticate, async (req, res) => {
+  try {
+    const { containerName } = req.params;
+
+    // بررسی مالکیت (اگر ادمین نیست)
+    if (req.user.role !== "admin") {
+      const owns = await dockerManager.userOwnsContainer(containerName, req.user.username);
+      if (!owns) return res.status(403).json({ error: "Access denied" });
+    }
+
+    const usage = await resourceLimits.getContainerResourceUsage(containerName);
+    res.json(usage);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// دریافت مصرف منابع همه کانتینرهای یک نمونه
+app.get("/api/resource-usage/instance/:instanceName", authenticate, async (req, res) => {
+  try {
+    const { instanceName } = req.params;
+
+    // بررسی مالکیت
+    if (req.user.role !== "admin") {
+      const instances = await dockerManager.listInstances(req.user.username);
+      const owns = instances.some((i) => i.instanceName === instanceName);
+      if (!owns) return res.status(403).json({ error: "Access denied" });
+    }
+
+    const wpUsage = await resourceLimits.getContainerResourceUsage(`wp-${instanceName}`);
+    const dbUsage = await resourceLimits.getContainerResourceUsage(`db-${instanceName}`);
+
+    res.json({
+      instanceName,
+      wordpress: wpUsage,
+      database: dbUsage,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// بروزرسانی محدودیت‌های یک کانتینر در حال اجرا (داینامیک)
+app.post("/api/resource-usage/update", authenticate, adminOnly, async (req, res) => {
+  try {
+    const { containerName, cpu, memory, memorySwap } = req.body;
+    if (!containerName) {
+      return res.status(400).json({ error: "containerName is required" });
+    }
+    const result = await resourceLimits.updateRunningContainerLimits(containerName, { cpu, memory, memorySwap });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =================================================================
 // ==================== FILE MANAGER API ============================
 // =================================================================
+REPLACE
 
 app.get("/api/filemanager/list", authenticate, async (req, res) => {
   try {

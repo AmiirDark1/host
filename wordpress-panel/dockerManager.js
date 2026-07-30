@@ -2,6 +2,7 @@ const Docker = require('dockerode');
 const docker = new Docker();
 const os = require('os');
 const dns = require('dns');
+const resourceLimits = require('./resourceLimits');
 
 class DockerManager {
   constructor() {
@@ -171,6 +172,12 @@ class DockerManager {
 
     try {
       // ===== CREATE MYSQL DATABASE CONTAINER =====
+      // اعمال محدودیت‌های منابع (CPU, RAM, Disk) روی کانتینر دیتابیس
+      const dbLimits = resourceLimits.getContainerHostConfig('db', {
+        cpu: 0.3,       // حداکثر 0.3 هسته CPU
+        memory: '256m',  // حداکثر 256 مگابایت RAM
+        diskSize: 1,     // حداکثر 1 گیگابایت فضا
+      });
       const dbContainer = await docker.createContainer({
         name: dbContainerName,
         Image: 'mysql:5.7',
@@ -182,7 +189,7 @@ class DockerManager {
         ],
         HostConfig: {
           NetworkMode: 'wordpress-net',
-          RestartPolicy: { Name: 'always' },
+          ...dbLimits,
         },
         Labels: {
           'wp-managed': 'true',
@@ -203,6 +210,13 @@ class DockerManager {
       // این کانتینر به دو شبکه متصل می‌شود:
       // 1. wordpress-net (داخلی) - برای ارتباط با MySQL
       // 2. nginx-proxy (عمومی) - برای دریافت ترافیک از Nginx
+      //
+      // اعمال محدودیت‌های منابع (CPU, RAM, Disk) روی کانتینر وردپرس
+      const wpLimits = resourceLimits.getContainerHostConfig('wp', {
+        cpu: 0.5,       // حداکثر 0.5 هسته CPU
+        memory: '256m',  // حداکثر 256 مگابایت RAM
+        diskSize: 2,     // حداکثر 2 گیگابایت فضا
+      });
       const wpContainer = await docker.createContainer({
         name: containerName,
         Image: 'wordpress:latest',
@@ -221,9 +235,7 @@ class DockerManager {
           // تنظیمات URL وردپرس با دامنه
           `WORDPRESS_CONFIG_EXTRA=define('WP_SITEURL', 'https://${cleanDomain}'); define('WP_HOME', 'https://${cleanDomain}'); define('FORCE_SSL_ADMIN', true);`,
         ],
-        HostConfig: {
-          RestartPolicy: { Name: 'always' },
-        },
+        HostConfig: wpLimits,
         Labels: {
           'wp-managed': 'true',
           'wp-user': userId,
