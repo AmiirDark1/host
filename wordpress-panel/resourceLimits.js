@@ -66,13 +66,18 @@ class ResourceLimitsManager {
 
   /**
    * ذخیره تنظیمات در فایل
+   * از دو فرمت پشتیبانی می‌کند:
+   *   فرمت جدید: { cpu: { wp: 0.5, db: 0.3 }, memory: { wp: '256m', db: '256m', swap: '512m' }, disk: { wp: 2, db: 1 } }
+   *   فرمت قدیمی/فرانت: { wp: { cpu: 0.5, memory: 256, diskSize: 2 }, db: { cpu: 0.3, memory: 256, diskSize: 1 } }
    */
   saveLimits(newLimits) {
     const fs = require('fs');
     const path = require('path');
     const configPath = path.join(__dirname, 'limits-config.json');
 
-    const merged = this._mergeDeep({ ...DEFAULT_LIMITS }, newLimits);
+    // نرمالایز کردن ساختار ورودی به فرمت داخلی
+    const normalized = this._normalizeLimits(newLimits);
+    const merged = this._mergeDeep({ ...DEFAULT_LIMITS }, normalized);
     this.limits = merged;
 
     try {
@@ -81,6 +86,54 @@ class ResourceLimitsManager {
     } catch (e) {
       return { success: false, error: e.message };
     }
+  }
+
+  /**
+   * نرمالایز کردن ساختار محدودیت‌ها از فرمت‌های مختلف به فرمت استاندارد
+   * پشتیبانی از:
+   *   { wp: { cpu: 0.5, memory: 256, diskSize: 2 }, db: {...} }  (فرمت فرانت‌اند)
+   *   { cpu: { wp: 0.5, db: 0.3 }, memory: {...}, disk: {...} }  (فرمت داخلی)
+   */
+  _normalizeLimits(input) {
+    if (!input || typeof input !== 'object') return {};
+
+    // اگر فرمت داخلی است (cpu, memory, disk در سطح بالایی هستند)
+    if (input.cpu && (input.cpu.wp !== undefined || input.cpu.db !== undefined)) {
+      return input; // already in correct format
+    }
+
+    // اگر فرمت فرانت‌اند است (wp, db در سطح بالایی هستند)
+    const result = {};
+    if (input.wp) {
+      result.cpu = result.cpu || {};
+      result.memory = result.memory || {};
+      result.disk = result.disk || {};
+      if (input.wp.cpu !== undefined) result.cpu.wp = input.wp.cpu;
+      if (input.wp.memory !== undefined) {
+        const memVal = parseInt(input.wp.memory);
+        result.memory.wp = isNaN(memVal) ? '256m' : `${memVal}m`;
+      }
+      if (input.wp.diskSize !== undefined) result.disk.wp = input.wp.diskSize;
+    }
+    if (input.db) {
+      result.cpu = result.cpu || {};
+      result.memory = result.memory || {};
+      result.disk = result.disk || {};
+      if (input.db.cpu !== undefined) result.cpu.db = input.db.cpu;
+      if (input.db.memory !== undefined) {
+        const memVal = parseInt(input.db.memory);
+        result.memory.db = isNaN(memVal) ? '256m' : `${memVal}m`;
+      }
+      if (input.db.diskSize !== undefined) result.disk.db = input.db.diskSize;
+    }
+
+    // حافظه Swap را هم اگر در ورودی هست حفظ کن
+    if (input.memory?.swap) {
+      result.memory = result.memory || {};
+      result.memory.swap = input.memory.swap;
+    }
+
+    return Object.keys(result).length > 0 ? result : input;
   }
 
   /**

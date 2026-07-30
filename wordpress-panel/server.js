@@ -292,15 +292,78 @@ app.get("/api/users", authenticate, adminOnly, (req, res) => {
 // =================================================================
 
 // دریافت تنظیمات فعلی محدودیت منابع
+// تبدیل از فرمت داخلی به فرمت فرانت‌اند برای سازگاری
 app.get("/api/limits", authenticate, adminOnly, async (req, res) => {
   try {
-    const limits = resourceLimits.getLimits();
+    const internal = resourceLimits.getLimits();
     const defaults = resourceLimits.getDefaults();
-    res.json({ limits, defaults });
+
+    // تبدیل از فرمت داخلی { cpu: { wp: 0.5 }, memory: { wp: '256m' }, disk: { wp: 2 } }
+    // به فرمت فرانت‌اند { wp: { cpu: 0.5, memory: 256, diskSize: 2 }, db: {...} }
+    const frontendFormat = {
+      wp: {
+        cpu: internal.cpu?.wp ?? defaults.cpu?.wp ?? 0.5,
+        memory: internal.memory?.wp ? parseInt(internal.memory.wp) : (defaults.memory?.wp ? parseInt(defaults.memory.wp) : 256),
+        diskSize: internal.disk?.wp ?? defaults.disk?.wp ?? 2,
+      },
+      db: {
+        cpu: internal.cpu?.db ?? defaults.cpu?.db ?? 0.3,
+        memory: internal.memory?.db ? parseInt(internal.memory.db) : (defaults.memory?.db ? parseInt(defaults.memory.db) : 256),
+        diskSize: internal.disk?.db ?? defaults.disk?.db ?? 1,
+      },
+      total: {
+        cpu: (internal.cpu?.wp ?? 0.5) + (internal.cpu?.db ?? 0.3),
+        memory: parseMemoryToMB(internal.memory?.swap || defaults.memory?.swap || '512m'),
+        diskSize: (internal.disk?.wp ?? 2) + (internal.disk?.db ?? 1),
+      },
+    };
+
+    // همچنین پیش‌فرض‌ها را هم به فرمت فرانت‌اند تبدیل کن
+    const defaultsFrontend = {
+      wp: {
+        cpu: defaults.cpu?.wp ?? 0.5,
+        memory: defaults.memory?.wp ? parseInt(defaults.memory.wp) : 256,
+        diskSize: defaults.disk?.wp ?? 2,
+      },
+      db: {
+        cpu: defaults.cpu?.db ?? 0.3,
+        memory: defaults.memory?.db ? parseInt(defaults.memory.db) : 256,
+        diskSize: defaults.disk?.db ?? 1,
+      },
+      total: {
+        cpu: (defaults.cpu?.wp ?? 0.5) + (defaults.cpu?.db ?? 0.3),
+        memory: parseMemoryToMB(defaults.memory?.swap || '512m'),
+        diskSize: (defaults.disk?.wp ?? 2) + (defaults.disk?.db ?? 1),
+      },
+    };
+
+    // برگردون هر دو فرمت (فرمت داخلی برای دیباگ و فرمت فرانت‌اند برای UI)
+    res.json({
+      limits: frontendFormat,
+      defaults: defaultsFrontend,
+      internalLimits: internal,       // فرمت داخلی برای دیباگ
+      internalDefaults: defaults,     // فرمت داخلی پیش‌فرض
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Helper: تبدیل رشته حافظه به مگابایت
+function parseMemoryToMB(str) {
+  if (typeof str === 'number') return str;
+  const match = str.toString().match(/^(\d+)(b|k|m|g)?$/i);
+  if (!match) return 512;
+  const val = parseInt(match[1]);
+  const unit = (match[2] || 'm').toLowerCase();
+  switch (unit) {
+    case 'b': return Math.round(val / (1024 * 1024));
+    case 'k': return Math.round(val / 1024);
+    case 'm': return val;
+    case 'g': return val * 1024;
+    default: return val;
+  }
+}
 
 // ذخیره تنظیمات جدید محدودیت منابع
 app.post("/api/limits", authenticate, adminOnly, async (req, res) => {

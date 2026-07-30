@@ -173,11 +173,8 @@ class DockerManager {
     try {
       // ===== CREATE MYSQL DATABASE CONTAINER =====
       // اعمال محدودیت‌های منابع (CPU, RAM, Disk) روی کانتینر دیتابیس
-      const dbLimits = resourceLimits.getContainerHostConfig('db', {
-        cpu: 0.3,       // حداکثر 0.3 هسته CPU
-        memory: '256m',  // حداکثر 256 مگابایت RAM
-        diskSize: 1,     // حداکثر 1 گیگابایت فضا
-      });
+      // محدودیت‌ها از فایل پیکربندی limits-config.json خوانده می‌شوند
+      const dbLimits = resourceLimits.getContainerHostConfig('db');
       const dbContainer = await docker.createContainer({
         name: dbContainerName,
         Image: 'mysql:5.7',
@@ -212,11 +209,8 @@ class DockerManager {
       // 2. nginx-proxy (عمومی) - برای دریافت ترافیک از Nginx
       //
       // اعمال محدودیت‌های منابع (CPU, RAM, Disk) روی کانتینر وردپرس
-      const wpLimits = resourceLimits.getContainerHostConfig('wp', {
-        cpu: 0.5,       // حداکثر 0.5 هسته CPU
-        memory: '256m',  // حداکثر 256 مگابایت RAM
-        diskSize: 2,     // حداکثر 2 گیگابایت فضا
-      });
+      // محدودیت‌ها از فایل پیکربندی limits-config.json خوانده می‌شوند
+      const wpLimits = resourceLimits.getContainerHostConfig('wp');
       const wpContainer = await docker.createContainer({
         name: containerName,
         Image: 'wordpress:latest',
