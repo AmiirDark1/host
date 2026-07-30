@@ -12,6 +12,7 @@ networks:
   nginx-proxy:
     name: nginx-proxy
     driver: bridge
+    enable_ipv6: false
     ipam:
       config:
         - subnet: 172.20.0.0/16
