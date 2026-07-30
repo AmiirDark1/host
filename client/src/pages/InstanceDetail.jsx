@@ -702,7 +702,6 @@ export default function InstanceDetail() {
       {/* ============== Files Tab ============== */}
       {tab === "files" && (
         <div>
-          {/* File Manager notification */}
           {fmMsg && (
             <div
               className={`alert ${fmMsg.isError ? "alert-danger" : "alert-success"}`}
@@ -712,7 +711,6 @@ export default function InstanceDetail() {
             </div>
           )}
 
-          {/* Toolbar */}
           <div className="card" style={{ marginBottom: 12 }}>
             <div
               className="card-body"
@@ -775,7 +773,6 @@ export default function InstanceDetail() {
             </div>
           </div>
 
-          {/* Hidden file input */}
           <input
             type="file"
             ref={fileInputRef}
@@ -783,7 +780,6 @@ export default function InstanceDetail() {
             onChange={handleFileUpload}
           />
 
-          {/* File list */}
           <div className="card">
             <div className="card-body" style={{ padding: 0 }}>
               {fmLoading ? (
@@ -870,7 +866,6 @@ export default function InstanceDetail() {
             </div>
           </div>
 
-          {/* File Editor Modal */}
           {fmEditing && (
             <div
               className="modal-overlay"
