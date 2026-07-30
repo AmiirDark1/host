@@ -203,6 +203,28 @@ app.get("/api/instances", authenticate, async (req, res) => {
 });
 
 // =================================================================
+// Get Single Instance Details
+// =================================================================
+app.get("/api/instances/:instanceName", authenticate, async (req, res) => {
+  try {
+    const { instanceName } = req.params;
+    let instances;
+    if (req.user.role === "admin") {
+      instances = await dockerManager.listInstances();
+    } else {
+      instances = await dockerManager.listInstances(req.user.username);
+    }
+    const instance = instances.find(i => i.instanceName === instanceName);
+    if (!instance) {
+      return res.status(404).json({ error: "Instance not found" });
+    }
+    res.json(instance);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =================================================================
 // Instance Actions (Start/Stop/Logs)
 // =================================================================
 app.post("/api/instances/:instanceName/start", authenticate, async (req, res) => {
