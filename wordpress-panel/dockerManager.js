@@ -225,7 +225,7 @@ class DockerManager {
       const dbLimits = resourceLimits.getContainerHostConfig('db');
       const dbContainer = await docker.createContainer({
         name: dbContainerName,
-        Image: 'mysql:8',
+        Image: 'mariadb:10.11',
         Env: [
           `MYSQL_ROOT_PASSWORD=${dbPassword}`,
           `MYSQL_DATABASE=${dbName}`,
