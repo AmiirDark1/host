@@ -142,7 +142,7 @@ app.get("/api/server-info", authenticate, async (req, res) => {
 // =================================================================
 app.post("/api/instances", authenticate, async (req, res) => {
   try {
-    const { instanceName, domain } = req.body;
+    const { instanceName, domain, resources } = req.body;
     if (!instanceName) {
       return res.status(400).json({ error: "instanceName is required" });
     }
@@ -154,6 +154,7 @@ app.post("/api/instances", authenticate, async (req, res) => {
       instanceName,
       req.user.username,
       domain,
+      resources || {},
     );
     res.json(instance);
   } catch (err) {
@@ -166,7 +167,7 @@ app.post("/api/instances", authenticate, async (req, res) => {
 // =================================================================
 app.post("/api/instances/bulk", authenticate, async (req, res) => {
   try {
-    const { count, domains } = req.body;
+    const { count, domains, resources } = req.body;
     if (![3, 6].includes(count)) {
       return res.status(400).json({ error: "Count must be 3 or 6" });
     }
@@ -178,6 +179,7 @@ app.post("/api/instances/bulk", authenticate, async (req, res) => {
       req.user.username,
       count,
       domains,
+      resources || {},
     );
     res.json(result);
   } catch (err) {

@@ -1,0 +1,36 @@
+# Dependencies
+node_modules
+**/node_modules
+
+# Build artifacts
+client/dist
+wordpress-panel/public/assets/*.map
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Nginx infrastructure (mounted from host)
+nginx/
+wordpress-panel/infrastructure/
+
+# Environment
+.env
+*.env
+
+# Git
+.git
+.gitignore
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Cache
+.npm
+.cache

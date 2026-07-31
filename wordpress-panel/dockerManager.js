@@ -197,8 +197,9 @@ class DockerManager {
 
   // =================================================================
   // ایجاد یک نمونه WordPress با دامنه
+  // resources = { wpDiskSize, dbDiskSize, wpCpu, dbCpu, wpMemory, dbMemory }
   // =================================================================
-  async createWordPressInstance(instanceName, userId, domain) {
+  async createWordPressInstance(instanceName, userId, domain, resources = {}) {
     // اول DNS را چک می‌کنیم
     const dnsCheck = await this.checkDomainDNS(domain);
     if (!dnsCheck.ok) {
@@ -221,8 +222,12 @@ class DockerManager {
     try {
       // ===== CREATE MYSQL DATABASE CONTAINER =====
       // اعمال محدودیت‌های منابع (CPU, RAM, Disk) روی کانتینر دیتابیس
-      // محدودیت‌ها از فایل پیکربندی limits-config.json خوانده می‌شوند
-      const dbLimits = resourceLimits.getContainerHostConfig('db');
+      // مقدار اختصاصی هر سایت (resources) اولویت دارد، وگرنه پیش‌فرض
+      const dbLimits = resourceLimits.getContainerHostConfig('db', {
+        cpu: resources.dbCpu,
+        memory: resources.dbMemory,
+        diskSize: resources.dbDiskSize,
+      });
       let dbImage = 'mariadb:10.11';
       // اگر متغیر محیطی MIRROR_REGISTRY ست شده باشه ازش استفاده کن (برای سرورهای چین)
       if (process.env.MIRROR_REGISTRY) {
@@ -262,8 +267,12 @@ class DockerManager {
       // 2. nginx-proxy (عمومی) - برای دریافت ترافیک از Nginx
       //
       // اعمال محدودیت‌های منابع (CPU, RAM, Disk) روی کانتینر وردپرس
-      // محدودیت‌ها از فایل پیکربندی limits-config.json خوانده می‌شوند
-      const wpLimits = resourceLimits.getContainerHostConfig('wp');
+      // مقدار اختصاصی هر سایت (resources) اولویت دارد، وگرنه پیش‌فرض
+      const wpLimits = resourceLimits.getContainerHostConfig('wp', {
+        cpu: resources.wpCpu,
+        memory: resources.wpMemory,
+        diskSize: resources.wpDiskSize,
+      });
       let wpImage = 'wordpress:latest';
       // اگر متغیر محیطی MIRROR_REGISTRY ست شده باشه ازش استفاده کن (برای سرورهای چین)
       if (process.env.MIRROR_REGISTRY) {
@@ -327,6 +336,14 @@ class DockerManager {
         url: `https://${cleanDomain}`,
         serverIp,
         sslStatus: 'pending',  // SSL در حال صدور
+        resources: {
+          wpDiskSize: resources.wpDiskSize || null,
+          dbDiskSize: resources.dbDiskSize || null,
+          wpCpu: resources.wpCpu || null,
+          dbCpu: resources.dbCpu || null,
+          wpMemory: resources.wpMemory || null,
+          dbMemory: resources.dbMemory || null,
+        },
         createdAt: new Date(),
       };
       
@@ -363,8 +380,9 @@ class DockerManager {
 
   // =================================================================
   // ایجاد چندین نمونه به صورت Bulk (3 یا 6 تایی)
+  // resources = { wpDiskSize, dbDiskSize, wpCpu, dbCpu, wpMemory, dbMemory }
   // =================================================================
-  async createMultipleInstances(userId, count, domains) {
+  async createMultipleInstances(userId, count, domains, resources = {}) {
     const instances = [];
     const errors = [];
 
@@ -387,7 +405,8 @@ class DockerManager {
         const instance = await this.createWordPressInstance(
           instanceName,
           userId,
-          domains[i]
+          domains[i],
+          resources
         );
         instances.push(instance);
       } catch (err) {

@@ -5,17 +5,19 @@
 #   - Nginx Reverse Proxy (دریافت ترافیک HTTP/HTTPS)
 #   - Acme Companion (صدور خودکار SSL Let's Encrypt)
 #   - WordPress Panel (پنل مدیریت کانتینرها)
+#
+# نکته: شبکه `nginx-proxy` باید از قبل ساخته شده باشد.
+# برای ساخت خودکار آن:
+#   docker network create nginx-proxy
 # ============================================================
 
 networks:
   # شبکه عمومی برای Nginx Proxy - همه کانتینرها به این متصل می‌شوند
+  # این شبکه به صورت external است چون dockerManager
+  # کانتینرهای وردپرس جدید را هم به آن متصل می‌کند
   nginx-proxy:
+    external: true
     name: nginx-proxy
-    driver: bridge
-    enable_ipv6: false
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
 
 services:
   # ===================================================================

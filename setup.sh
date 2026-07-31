@@ -1,25 +1,25 @@
 #!/bin/bash
 # ============================================================
-# Setup Script for WordPress Panel
+# Setup Script for WordPress Panel Docker Stack
 # ============================================================
-# این اسکریپت پوشه‌های مورد نیاز را ساخته و آماده می‌کند
+# این اسکریپت شبکه و پوشه‌های لازم را قبل از docker compose up می‌سازد
 # ============================================================
 
 set -e
 
-echo "🚀 Setting up WordPress Panel Infrastructure..."
+echo "🚀 Setting up WordPress Panel Docker Stack..."
 echo ""
 
-# 1. Create nginx directories
-echo "📁 Creating nginx directories..."
-mkdir -p nginx/custom
-mkdir -p nginx/vhost.d
-mkdir -p nginx/html
-mkdir -p nginx/certs
-mkdir -p nginx/conf.d
-mkdir -p nginx/acme
+# 1. Create docker network for nginx-proxy
+echo "📡 Creating nginx-proxy network..."
+docker network create nginx-proxy 2>/dev/null || echo "   ✅ Network already exists"
 
-# 2. Create a simple error page for unknown domains
+# 2. Create necessary directories
+echo "📁 Creating directories..."
+mkdir -p nginx/custom nginx/vhost.d nginx/html nginx/certs nginx/conf.d nginx/acme
+echo "   ✅ Directories created"
+
+# 3. Create a simple error page for unknown domains
 echo "📄 Creating error page..."
 cat > nginx/html/error.html << 'EOF'
 <!DOCTYPE html>
@@ -43,13 +43,15 @@ cat > nginx/html/error.html << 'EOF'
 </body>
 </html>
 EOF
+echo "   ✅ Error page created"
 
 echo ""
+echo "============================================"
 echo "✅ Setup complete!"
 echo ""
-echo "Now you can start all services with:"
-echo "   docker-compose up -d"
+echo "حالا برای بالا آوردن همه سرویس‌ها اجرا کنید:"
+echo "   docker compose up -d"
 echo ""
-echo "And access the panel at: http://localhost:3000"
-echo "   Username: admin"
-echo "   Password: admin123"
+echo "پنل مدیریت روی پورت 3000 در دسترس است:"
+echo "   http://localhost:3000"
+echo "============================================"
