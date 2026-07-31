@@ -446,12 +446,35 @@ class DockerManager {
   }
 
   // =================================================================
+  // قفل مسیر فایل منیجر - فقط /var/www/html برای کانتینر wp
+  // =================================================================
+  _resolveWpPath(path) {
+    const base = '/var/www/html';
+    if (!path || path === '/' || path === '.' || path === '') return base;
+
+    // اگر قبلاً با /var/www/html شروع شده، نرمالایز کن
+    let cleanPath = path.startsWith(base)
+      ? path
+      : base + (path.startsWith('/') ? path : '/' + path);
+
+    // حذف اسلش‌های اضافی و اسلش انتهایی
+    cleanPath = cleanPath.replace(/\/+/g, '/').replace(/\/$/, '');
+
+    // جلوگیری از path traversal
+    if (cleanPath.startsWith(base)) return cleanPath || base;
+
+    return base;
+  }
+
+  // =================================================================
   // File Manager - List directory contents
   // =================================================================
   async listFiles(instanceName, containerType, path) {
     try {
       const containerName = containerType === 'db' ? `db-${instanceName}` : `wp-${instanceName}`;
-      const escapedPath = this._escapePath(path);
+      // اگر wp است، مسیر را قفل کن به /var/www/html
+      const resolvedPath = containerType === 'wp' ? this._resolveWpPath(path) : path;
+      const escapedPath = this._escapePath(resolvedPath);
       const container = docker.getContainer(containerName);
       
       const exec = await container.exec({
@@ -483,7 +506,8 @@ class DockerManager {
     try {
       const containerName = containerType === 'db' ? `db-${instanceName}` : `wp-${instanceName}`;
       const container = docker.getContainer(containerName);
-      const escapedPath = this._escapePath(filePath);
+      const resolvedPath = containerType === 'wp' ? this._resolveWpPath(filePath) : filePath;
+      const escapedPath = this._escapePath(resolvedPath);
       
       const exec = await container.exec({
         Cmd: ['sh', '-c', `cat '${escapedPath}' 2>&1`],
@@ -515,10 +539,13 @@ class DockerManager {
       const containerName = containerType === 'db' ? `db-${instanceName}` : `wp-${instanceName}`;
       const container = docker.getContainer(containerName);
       
+      // قفل مسیر به /var/www/html برای wp
+      const resolvedFilePath = containerType === 'wp' ? this._resolveWpPath(filePath) : filePath;
+      
       const tar = require('tar-stream');
       const pack = tar.pack();
       
-      const normalizedPath = filePath.replace(/\\/g, '/');
+      const normalizedPath = resolvedFilePath.replace(/\\/g, '/');
       const lastSlash = normalizedPath.lastIndexOf('/');
       const dirPath = lastSlash > 0 ? normalizedPath.substring(0, lastSlash) : '/';
       const fileName = lastSlash >= 0 ? normalizedPath.substring(lastSlash + 1) : normalizedPath;
@@ -554,7 +581,8 @@ class DockerManager {
     try {
       const containerName = containerType === 'db' ? `db-${instanceName}` : `wp-${instanceName}`;
       const container = docker.getContainer(containerName);
-      const escapedPath = this._escapePath(filePath);
+      const resolvedPath = containerType === 'wp' ? this._resolveWpPath(filePath) : filePath;
+      const escapedPath = this._escapePath(resolvedPath);
       
       const exec = await container.exec({
         Cmd: ['sh', '-c', `rm -rf '${escapedPath}'`],
@@ -584,8 +612,10 @@ class DockerManager {
       const containerName = containerType === 'db' ? `db-${instanceName}` : `wp-${instanceName}`;
       const container = docker.getContainer(containerName);
       
+      const resolvedPath = containerType === 'wp' ? this._resolveWpPath(dirPath) : dirPath;
+      
       const exec = await container.exec({
-        Cmd: ['mkdir', '-p', dirPath],
+        Cmd: ['mkdir', '-p', resolvedPath],
         AttachStdout: true,
         AttachStderr: true,
       });

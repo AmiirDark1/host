@@ -16,14 +16,15 @@ export default function InstanceDetail() {
   const [resourceUsage, setResourceUsage] = useState(null);
 
   // File Manager state - always locked to wp /var/www/html
-  const [fmPath, setFmPath] = useState("/");
+  const WP_BASE = "/var/www/html";
+  const [fmPath, setFmPath] = useState(WP_BASE);
   const [fmEntries, setFmEntries] = useState([]);
   const [fmLoading, setFmLoading] = useState(false);
   const [fmError, setFmError] = useState(null);
   const [fmEditing, setFmEditing] = useState(null);
   const [fmEditContent, setFmEditContent] = useState("");
   const [fmMsg, setFmMsg] = useState(null);
-  const [fmHistory, setFmHistory] = useState(["/"]);
+  const [fmHistory, setFmHistory] = useState([WP_BASE]);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -132,7 +133,8 @@ export default function InstanceDetail() {
         isDir,
         size,
         perms,
-        path: fmPath === "/" ? `/${name}` : `${fmPath}/${name}`,
+        path:
+          fmPath === WP_BASE ? `${WP_BASE}/${name}` : `${fmPath}/${name}`,
       });
     }
     return entries;
@@ -284,7 +286,8 @@ export default function InstanceDetail() {
   async function createDir() {
     const dirName = prompt("نام پوشه جدید:");
     if (!dirName) return;
-    const newPath = fmPath === "/" ? `/${dirName}` : `${fmPath}/${dirName}`;
+    const newPath =
+      fmPath === WP_BASE ? `${WP_BASE}/${dirName}` : `${fmPath}/${dirName}`;
     try {
       const data = await apiCall(`/filemanager/mkdir`, {
         method: "POST",
@@ -316,7 +319,7 @@ export default function InstanceDetail() {
     reader.onload = async (evt) => {
       const content = evt.target.result;
       const destPath =
-        fmPath === "/" ? `/${file.name}` : `${fmPath}/${file.name}`;
+        fmPath === WP_BASE ? `${WP_BASE}/${file.name}` : `${fmPath}/${file.name}`;
       try {
         const data = await apiCall(`/filemanager/upload`, {
           method: "POST",
@@ -739,7 +742,7 @@ export default function InstanceDetail() {
                     direction: "ltr",
                   }}
                 >
-                  /var/www/html{fmPath}
+                  {fmPath}
                 </span>
               </div>
 

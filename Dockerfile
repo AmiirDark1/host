@@ -34,6 +34,9 @@ COPY wordpress-panel/server.js ./
 COPY wordpress-panel/dockerManager.js ./
 COPY wordpress-panel/resourceLimits.js ./
 
+# Create infrastructure directories for SSL certs (mounted from host via docker-compose)
+RUN mkdir -p /app/infrastructure/nginx/certs
+
 # Copy pre-built React client from Stage 1 into the static directory
 COPY --from=client-builder /app/wordpress-panel/public ./public
 

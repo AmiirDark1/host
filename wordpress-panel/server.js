@@ -463,7 +463,14 @@ app.post("/api/resource-usage/update", authenticate, adminOnly, async (req, res)
 // ==================== FILE MANAGER API ============================
 // =================================================================
 
-app.get("/api/filemanager/list", authenticate, async (req, res) => {
+// قفل فایل منیجر: فقط کانتینر wp و مسیر /var/www/html
+function fileManagerOnlyWP(req, res, next) {
+  if (req.body && typeof req.body === "object") req.body.containerType = "wp";
+  if (req.query && typeof req.query === "object") req.query.containerType = "wp";
+  next();
+}
+
+app.get("/api/filemanager/list", authenticate, fileManagerOnlyWP, async (req, res) => {
   try {
     const { instanceName, containerType, path } = req.query;
     if (!instanceName || !containerType || !path) {
@@ -481,7 +488,7 @@ app.get("/api/filemanager/list", authenticate, async (req, res) => {
   }
 });
 
-app.get("/api/filemanager/read", authenticate, async (req, res) => {
+app.get("/api/filemanager/read", authenticate, fileManagerOnlyWP, async (req, res) => {
   try {
     const { instanceName, containerType, filePath } = req.query;
     if (!instanceName || !containerType || !filePath) {
@@ -499,7 +506,7 @@ app.get("/api/filemanager/read", authenticate, async (req, res) => {
   }
 });
 
-app.post("/api/filemanager/write", authenticate, async (req, res) => {
+app.post("/api/filemanager/write", authenticate, fileManagerOnlyWP, async (req, res) => {
   try {
     const { instanceName, containerType, filePath, content } = req.body;
     if (!instanceName || !containerType || !filePath || content === undefined) {
@@ -517,7 +524,7 @@ app.post("/api/filemanager/write", authenticate, async (req, res) => {
   }
 });
 
-app.delete("/api/filemanager/delete", authenticate, async (req, res) => {
+app.delete("/api/filemanager/delete", authenticate, fileManagerOnlyWP, async (req, res) => {
   try {
     const { instanceName, containerType, filePath } = req.body;
     if (!instanceName || !containerType || !filePath) {
@@ -535,7 +542,7 @@ app.delete("/api/filemanager/delete", authenticate, async (req, res) => {
   }
 });
 
-app.post("/api/filemanager/mkdir", authenticate, async (req, res) => {
+app.post("/api/filemanager/mkdir", authenticate, fileManagerOnlyWP, async (req, res) => {
   try {
     const { instanceName, containerType, dirPath } = req.body;
     if (!instanceName || !containerType || !dirPath) {
@@ -553,7 +560,7 @@ app.post("/api/filemanager/mkdir", authenticate, async (req, res) => {
   }
 });
 
-app.post("/api/filemanager/upload", authenticate, async (req, res) => {
+app.post("/api/filemanager/upload", authenticate, fileManagerOnlyWP, async (req, res) => {
   try {
     const { instanceName, containerType, destPath, content } = req.body;
     if (!instanceName || !containerType || !destPath || content === undefined) {
