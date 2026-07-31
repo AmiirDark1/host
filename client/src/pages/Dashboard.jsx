@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import InstanceDetail from "./InstanceDetail";
 
 export default function Dashboard() {
-  const { apiCall } = useAuth();
+  const { apiCall, user } = useAuth();
   const navigate = useNavigate();
   const [instances, setInstances] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +33,8 @@ export default function Dashboard() {
 
   const runningCount = instances.filter((i) => i.status === "running").length;
   const stoppedCount = instances.filter((i) => i.status === "stopped").length;
+  const totalCount = instances.length;
+  const domainCount = instances.filter((i) => i.domain).length;
 
   // فیلتر بر اساس تب و جستجو
   const filteredInstances = instances.filter((inst) => {
@@ -51,24 +53,56 @@ export default function Dashboard() {
   const safePage = Math.min(currentPage, totalPages);
   const paginated = filteredInstances.slice((safePage - 1) * perPage, safePage * perPage);
 
-  function goToPage(p) {
-    setCurrentPage(Math.min(Math.max(1, p), totalPages));
-  }
+  const goToPage = (p) => {
+    const target = Math.max(1, Math.min(p, totalPages));
+    setCurrentPage(target);
+  };
 
-  async function handleDelete(instanceName) {
-    if (!window.confirm(`آیا از حذف سرویس ${instanceName} مطمئن هستید؟`)) return;
+  const handleDelete = async (name) => {
+    if (!window.confirm(`آیا از حذف سرویس ${name} مطمئن هستید؟`)) return;
     try {
-      await apiCall(`/instances/${instanceName}`, { method: "DELETE" });
-      setInstances(instances.filter((i) => i.instanceName !== instanceName));
+      await apiCall(`/instances/${name}`, "DELETE");
+      setInstances((prev) => prev.filter((i) => i.instanceName !== name));
     } catch (err) {
-      alert(`خطا در حذف: ${err.message}`);
+      alert(`خطا در حذف سرویس: ${err.message || err}`);
     }
-  }
+  };
+
+  const stats = [
+    {
+      label: "کل سرویس‌ها",
+      value: totalCount,
+      icon: "🖥️",
+      color: "primary",
+      desc: "مجموع هاست‌ها",
+    },
+    {
+      label: "سرویس‌های فعال",
+      value: runningCount,
+      icon: "🟢",
+      color: "success",
+      desc: "در حال اجرا",
+    },
+    {
+      label: "سرویس‌های متوقف",
+      value: stoppedCount,
+      icon: "⏸️",
+      color: "warning",
+      desc: "غیرفعال",
+    },
+    {
+      label: "دامنه‌های متصل",
+      value: domainCount,
+      icon: "🌐",
+      color: "info",
+      desc: "متصل شده",
+    },
+  ];
 
   if (loading) {
     return (
-      <div className="loading-screen">
-        <div className="spinner spinner-lg" />
+      <div className="dashboard-loading">
+        <div className="spinner" />
         <p>در حال بارگذاری...</p>
       </div>
     );
@@ -76,18 +110,50 @@ export default function Dashboard() {
 
   return (
     <div className="my-hosts">
+      {/* ===== Welcome Banner ===== */}
+      <div className="dash-welcome-banner">
+        <div className="dash-welcome-content">
+          <div className="dash-welcome-icon">
+            {user?.username?.charAt(0)?.toUpperCase() || "U"}
+          </div>
+          <div className="dash-welcome-text">
+            <h2>خوش آمدید، {user?.username || "کاربر"} 👋</h2>
+            <p>مدیریت سرویس‌های میزبانی وب شما در یک نگاه</p>
+          </div>
+        </div>
+        <div className="dash-welcome-badge">
+          <span className="status-dot running" />
+          سیستم فعال
+        </div>
+      </div>
+
+      {/* ===== Stats Cards ===== */}
+      <div className="dash-stats-grid">
+        {stats.map((s) => (
+          <div key={s.label} className={`dash-stat-card ${s.color}`}>
+            <div className="dash-stat-icon">{s.icon}</div>
+            <div className="dash-stat-info">
+              <div className="dash-stat-value">{s.value}</div>
+              <div className="dash-stat-label">{s.label}</div>
+              <div className="dash-stat-desc">{s.desc}</div>
+            </div>
+            <div className="dash-stat-glow" />
+          </div>
+        ))}
+      </div>
+
       {/* ===== Header ===== */}
       <div className="hosts-header">
-        <div>
-          <h1 className="hosts-title">هاست های من</h1>
-          <p className="hosts-subtitle">مدیریت سرویس‌های میزبانی وب شما</p>
+        <div className="hosts-title">
+          <h2>📦 سرویس‌های من</h2>
+          <span className="hosts-subtitle">مدیریت و نظارت بر هاست‌های خود</span>
         </div>
         <div className="hosts-header-actions">
           <div className="hosts-search">
             <span className="hosts-search-icon">🔍</span>
             <input
               type="text"
-              placeholder="جستجوی سرویس..."
+              placeholder="جستجوی سرویس یا دامنه..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -96,9 +162,8 @@ export default function Dashboard() {
             />
           </div>
           <button
-            className="hosts-filter-btn"
+            className="btn btn-primary hosts-buy-btn"
             onClick={() => navigate("/store")}
-            title="خرید هاست جدید"
           >
             + خرید هاست جدید
           </button>
@@ -124,7 +189,7 @@ export default function Dashboard() {
             setCurrentPage(1);
           }}
         >
-          هاست متاقضی
+          هاست فعال
           <span className="hosts-tab-count">{runningCount}</span>
         </button>
         <button
