@@ -10,18 +10,24 @@ set -e
 echo "🚀 Setting up WordPress Panel Docker Stack..."
 echo ""
 
-# 1. Create docker network for nginx-proxy
-echo "📡 Creating nginx-proxy network..."
-docker network create nginx-proxy 2>/dev/null || echo "   ✅ Network already exists"
+# 1. Create docker networks
+echo "📡 Creating docker networks..."
+docker network create nginx-proxy 2>/dev/null || echo "   ✅ nginx-proxy network already exists"
+docker network create wordpress-net 2>/dev/null || echo "   ✅ wordpress-net network already exists"
 
 # 2. Create necessary directories
 echo "📁 Creating directories..."
-mkdir -p nginx/custom nginx/vhost.d nginx/html nginx/certs nginx/conf.d nginx/acme
+mkdir -p wordpress-panel/infrastructure/nginx/custom
+mkdir -p wordpress-panel/infrastructure/nginx/vhost.d
+mkdir -p wordpress-panel/infrastructure/nginx/html
+mkdir -p wordpress-panel/infrastructure/nginx/certs
+mkdir -p wordpress-panel/infrastructure/nginx/conf.d
+mkdir -p wordpress-panel/infrastructure/nginx/acme
 echo "   ✅ Directories created"
 
 # 3. Create a simple error page for unknown domains
 echo "📄 Creating error page..."
-cat > nginx/html/error.html << 'EOF'
+cat > wordpress-panel/infrastructure/nginx/html/error.html << 'EOF'
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -50,7 +56,7 @@ echo "============================================"
 echo "✅ Setup complete!"
 echo ""
 echo "حالا برای بالا آوردن همه سرویس‌ها اجرا کنید:"
-echo "   docker compose up -d"
+echo "   docker compose up -d --build"
 echo ""
 echo "پنل مدیریت روی پورت 3000 در دسترس است:"
 echo "   http://localhost:3000"

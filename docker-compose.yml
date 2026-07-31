@@ -71,4 +71,4 @@ services:
 
 networks:
   nginx-proxy:
-    external: true
+  wordpress-net:
