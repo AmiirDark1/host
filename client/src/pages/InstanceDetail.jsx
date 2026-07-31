@@ -33,6 +33,19 @@ export default function InstanceDetail() {
   const [fmUploading, setFmUploading] = useState(false);
   const fileInputRef = useRef(null);
   const [fmSelectAll, setFmSelectAll] = useState(false);
+  // VS Code style editor state
+  const [editorCursor, setEditorCursor] = useState({ line: 1, col: 1 });
+  const [editorFind, setEditorFind] = useState("");
+  const [editorFindOpen, setEditorFindOpen] = useState(false);
+  const [editorFindMatches, setEditorFindMatches] = useState([]);
+  const [editorFindIndex, setEditorFindIndex] = useState(-1);
+  const [editorGoTo, setEditorGoTo] = useState("");
+  const [editorGoToOpen, setEditorGoToOpen] = useState(false);
+  const [editorChanged, setEditorChanged] = useState(false);
+  const editorRef = useRef(null);
+  const editorPreRef = useRef(null);
+  const findRef = useRef(null);
+  const goToRef = useRef(null);
 
   useEffect(() => {
     loadInstance();
@@ -513,6 +526,235 @@ export default function InstanceDetail() {
       parts.push({ label: seg, path: cum });
     }
     return parts;
+  }
+
+  // =============================================================
+  // VS Code style editor helpers
+  // =============================================================
+  function getFileLanguage(name) {
+    const ext = name.split(".").pop()?.toLowerCase();
+    if (["js", "jsx", "ts", "tsx", "mjs", "cjs"].includes(ext)) return "javascript";
+    if (["php", "php7", "php8"].includes(ext)) return "php";
+    if (["html", "htm"].includes(ext)) return "html";
+    if (["css", "scss", "less"].includes(ext)) return "css";
+    if (["json"].includes(ext)) return "json";
+    if (["md"].includes(ext)) return "markdown";
+    if (["py"].includes(ext)) return "python";
+    if (["sh", "bash"].includes(ext)) return "shell";
+    if (["sql"].includes(ext)) return "sql";
+    if (["xml", "yml", "yaml", "conf", "cfg", "ini", "env"].includes(ext)) return "yaml";
+    if (["htaccess"].includes(ext)) return "apache";
+    if (["txt", "log"].includes(ext)) return "plaintext";
+    return "plaintext";
+  }
+
+  function getLanguageIcon(lang) {
+    const icons = {
+      javascript: "🟨",
+      php: "🐘",
+      html: "🌐",
+      css: "🎨",
+      json: "📋",
+      markdown: "📝",
+      python: "🐍",
+      shell: "⚙️",
+      sql: "🗄️",
+      yaml: "⚙️",
+      apache: "⚡",
+      plaintext: "📄",
+    };
+    return icons[lang] || "📄";
+  }
+
+  function escapeHtml(str) {
+    return str
+      .replace(/&/g, "&")
+      .replace(/</g, "<")
+      .replace(/>/g, ">")
+      .replace(/"/g, """);
+  }
+
+  function highlightCode(content, lang) {
+    if (!content) return "";
+    const escaped = escapeHtml(content);
+    let result = escaped;
+
+    const applyHighlight = (pattern, color) => {
+      result = result.replace(pattern, (match, ...args) => {
+        const capture = args[0] !== undefined ? args[0] : match;
+        return `<span style="color:${color}">${capture}</span>`;
+      });
+    };
+
+    // Comments
+    if (lang === "javascript" || lang === "php" || lang === "css" || lang === "sql" || lang === "python" || lang === "shell") {
+      if (lang === "css") {
+        result = result.replace(/(\/\*[\s\S]*?\*\/)/g, '<span style="color:#6A9955">$1</span>');
+      } else {
+        result = result.replace(/(\/\/[^\n]*)/g, '<span style="color:#6A9955">$1</span>');
+        result = result.replace(/(#[^\n]*)/g, '<span style="color:#6A9955">$1</span>');
+        result = result.replace(/(\/\*[\s\S]*?\*\/)/g, '<span style="color:#6A9955">$1</span>');
+      }
+    }
+    if (lang === "html") {
+      result = result.replace(/(<!--[\s\S]*?-->)/g, '<span style="color:#6A9955">$1</span>');
+    }
+
+    // Strings
+    result = result.replace(/("[^&]*?"|'[^'\n]*'|`[^`]*`)/g, '<span style="color:#CE9178">$1</span>');
+
+    // Keywords
+    const keywords =
+      lang === "javascript"
+        ? /(\b(const|let|var|function|return|if|else|for|while|import|export|from|new|class|extends|super|try|catch|finally|async|await|typeof|instanceof|switch|case|break|continue|default|null|undefined|true|false|this|throw|delete|in|of|yield|static|get|set|do|void)\b)/g
+        : lang === "php"
+          ? /(\b(<\?php|\?>|function|if|else|elseif|for|foreach|while|return|echo|print|class|new|extends|public|private|protected|static|const|try|catch|finally|throw|as|use|namespace|require|require_once|include|include_once|true|false|null|switch|case|break|continue|default|global|isset|empty|unset|array|list|and|or|not|do|endif|endforeach|endwhile|endfor)\b)/g
+          : lang === "html"
+            ? /(<\/?[a-zA-Z][a-zA-Z0-9-]*|\b(html|head|body|div|span|p|a|img|script|style|link|meta|title|h1|h2|h3|h4|h5|h6|ul|ol|li|table|tr|td|th|form|input|button|select|option|textarea|nav|header|footer|main|section|article|aside|iframe|video|audio|source|br|hr|strong|em|b|i|u|small|label|blockquote|code|pre)\b)/g
+            : lang === "css"
+              ? /(\b(@import|@media|@keyframes|@font-face|@supports|from|to|important)\b|#[0-9a-fA-F]{3,8}\b)/g
+              : lang === "json"
+                ? /("\w+")(\s*:)/g
+                : /(\b(function|def|if|else|elif|for|while|return|import|from|class|try|except|finally|with|as|lambda|pass|break|continue|global|nonlocal|True|False|None|and|or|not|in|is|print|echo|select|from|where|insert|update|delete|create|table|into|values|set|drop|alter|join|left|right|inner|outer|group|order|by|having|limit|offset|null|true|false|begin|commit|rollback)\b)/g;
+
+    result = result.replace(keywords, '<span style="color:#569CD6">$1</span>');
+
+    // Numbers
+    result = result.replace(/(\b\d+(\.\d+)?\b)/g, '<span style="color:#B5CEA8">$1</span>');
+
+    // Functions (name followed by parenthesis)
+    if (lang === "javascript" || lang === "php" || lang === "python") {
+      result = result.replace(/(\b[a-zA-Z_]\w*)(?=\s*\()/g, '<span style="color:#DCDCAA">$1</span>');
+    }
+
+    // HTML attributes
+    if (lang === "html") {
+      result = result.replace(/([a-zA-Z-]+)(=)(")/g, '<span style="color:#9CDCFE">$1</span>$2<span style="color:#CE9178">$3');
+    }
+
+    // PHP variables
+    if (lang === "php") {
+      result = result.replace(/(\$[a-zA-Z_]\w*)/g, '<span style="color:#9CDCFE">$1</span>');
+    }
+
+    return result;
+  }
+
+  function handleEditorChange(e) {
+    const value = e.target.value;
+    setFmEditContent(value);
+    setEditorChanged(true);
+    updateCursorPos(e.target);
+  }
+
+  function updateCursorPos(el) {
+    if (!el) return;
+    const pos = el.selectionStart;
+    const before = el.value.substring(0, pos);
+    const lines = before.split("\n");
+    const line = lines.length;
+    const col = lines[lines.length - 1].length + 1;
+    setEditorCursor({ line, col });
+  }
+
+  function handleEditorKeyDown(e) {
+    // Ctrl+F → open find
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+      e.preventDefault();
+      setEditorFindOpen(true);
+      setTimeout(() => findRef.current?.focus(), 50);
+    }
+    // Ctrl+G → go to line
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "g") {
+      e.preventDefault();
+      setEditorGoToOpen(true);
+      setTimeout(() => goToRef.current?.focus(), 50);
+    }
+    // Escape closes find/go-to
+    if (e.key === "Escape") {
+      setEditorFindOpen(false);
+      setEditorGoToOpen(false);
+    }
+  }
+
+  function runFind() {
+    if (!editorFind.trim()) {
+      setEditorFindMatches([]);
+      setEditorFindIndex(-1);
+      return;
+    }
+    const lines = fmEditContent.split("\n");
+    const matches = [];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      let idx = line.indexOf(editorFind);
+      while (idx !== -1) {
+        matches.push({ line: i + 1, col: idx + 1 });
+        idx = line.indexOf(editorFind, idx + 1);
+      }
+    }
+    setEditorFindMatches(matches);
+    setEditorFindIndex(0);
+    scrollToMatch(matches[0]);
+  }
+
+  function scrollToMatch(match) {
+    if (!match || !editorRef.current) return;
+    const lines = editorRef.current.value.split("\n");
+    const lineText = lines[match.line - 1] || "";
+    const target = { line: match.line, col: match.col };
+    // Select the match in the textarea
+    let charIndex = 0;
+    for (let i = 0; i < match.line - 1; i++) {
+      charIndex += lines[i].length + 1;
+    }
+    charIndex += match.col - 1;
+    editorRef.current.focus();
+    editorRef.current.setSelectionRange(charIndex, charIndex + editorFind.length);
+    setEditorCursor(target);
+  }
+
+  function findNext() {
+    if (editorFindMatches.length === 0) return;
+    const next = (editorFindIndex + 1) % editorFindMatches.length;
+    setEditorFindIndex(next);
+    scrollToMatch(editorFindMatches[next]);
+  }
+
+  function findPrev() {
+    if (editorFindMatches.length === 0) return;
+    const prev =
+      editorFindIndex - 1 < 0
+        ? editorFindMatches.length - 1
+        : editorFindIndex - 1;
+    setEditorFindIndex(prev);
+    scrollToMatch(editorFindMatches[prev]);
+  }
+
+  function goToLine() {
+    const num = parseInt(editorGoTo);
+    if (!num || !editorRef.current) return;
+    const lines = editorRef.current.value.split("\n");
+    if (num < 1 || num > lines.length) return;
+    let charIndex = 0;
+    for (let i = 0; i < num - 1; i++) {
+      charIndex += lines[i].length + 1;
+    }
+    editorRef.current.focus();
+    editorRef.current.setSelectionRange(charIndex, charIndex);
+    setEditorCursor({ line: num, col: 1 });
+  }
+
+  function closeEditor() {
+    setFmEditing(null);
+    setFmEditContent("");
+    setEditorFind("");
+    setEditorFindOpen(false);
+    setEditorFindMatches([]);
+    setEditorFindIndex(-1);
+    setEditorGoTo("");
+    setEditorGoToOpen(false);
+    setEditorChanged(false);
   }
 
   // =============================================================
