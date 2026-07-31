@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 
 const navItems = [
   { path: '/', label: 'داشبورد', icon: '📊', exact: true },
@@ -17,6 +18,7 @@ const adminItems = [
 
 export default function Layout({ children }) {
   const { user, isAdmin, logout } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
   const [time, setTime] = useState(new Date())
@@ -135,6 +137,13 @@ export default function Layout({ children }) {
             <span className="header-time">
               {time.toLocaleDateString('fa-IR')} - {time.toLocaleTimeString('fa-IR')}
             </span>
+            <button
+              className="theme-toggle"
+              onClick={toggleTheme}
+              title={theme === 'dark' ? 'حالت روشن' : 'حالت تاریک'}
+            >
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
           </div>
         </header>
 
