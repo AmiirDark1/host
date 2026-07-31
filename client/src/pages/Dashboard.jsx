@@ -7,10 +7,8 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [instances, setInstances] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("all");
+  const [filter, setFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const perPage = 8;
 
   useEffect(() => {
     let cancelled = false;
@@ -31,29 +29,25 @@ export default function Dashboard() {
 
   const runningCount = instances.filter((i) => i.status === "running").length;
   const stoppedCount = instances.filter((i) => i.status === "stopped").length;
-  const totalCount = instances.length;
-  const domainCount = instances.filter((i) => i.domain).length;
 
-  // فیلتر بر اساس تب و جستجو
   const filteredInstances = instances.filter((inst) => {
-    const matchesTab =
-      activeTab === "all" ? true : activeTab === "running" ? inst.status === "running" : inst.status === "stopped";
+    const matchesFilter =
+      filter === "all" ? true : filter === "running" ? inst.status === "running" : inst.status === "stopped";
     const q = searchQuery.trim().toLowerCase();
     const matchesSearch =
       !q ||
       (inst.instanceName || "").toLowerCase().includes(q) ||
       (inst.domain || "").toLowerCase().includes(q);
-    return matchesTab && matchesSearch;
+    return matchesFilter && matchesSearch;
   });
 
-  // صفحه‌بندی
-  const totalPages = Math.max(1, Math.ceil(filteredInstances.length / perPage));
-  const safePage = Math.min(currentPage, totalPages);
-  const paginated = filteredInstances.slice((safePage - 1) * perPage, safePage * perPage);
-
-  const goToPage = (p) => {
-    const target = Math.max(1, Math.min(p, totalPages));
-    setCurrentPage(target);
+  const formatDate = (d) => {
+    if (!d) return "-";
+    try {
+      return new Date(d).toLocaleDateString("fa-IR");
+    } catch {
+      return "-";
+    }
   };
 
   const handleDelete = async (name) => {
@@ -66,40 +60,9 @@ export default function Dashboard() {
     }
   };
 
-  const stats = [
-    {
-      label: "کل سرویس‌ها",
-      value: totalCount,
-      icon: "🖥️",
-      color: "primary",
-      desc: "مجموع هاست‌ها",
-    },
-    {
-      label: "سرویس‌های فعال",
-      value: runningCount,
-      icon: "🟢",
-      color: "success",
-      desc: "در حال اجرا",
-    },
-    {
-      label: "سرویس‌های متوقف",
-      value: stoppedCount,
-      icon: "⏸️",
-      color: "warning",
-      desc: "غیرفعال",
-    },
-    {
-      label: "دامنه‌های متصل",
-      value: domainCount,
-      icon: "🌐",
-      color: "info",
-      desc: "متصل شده",
-    },
-  ];
-
   if (loading) {
     return (
-      <div className="dashboard-loading">
+      <div className="dash-loading">
         <div className="spinner" />
         <p>در حال بارگذاری...</p>
       </div>
@@ -107,60 +70,22 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="my-hosts">
-      {/* ===== Welcome Banner ===== */}
-      <div className="dash-welcome-banner">
-        <div className="dash-welcome-content">
-          <div className="dash-welcome-icon">
-            {user?.username?.charAt(0)?.toUpperCase() || "U"}
-          </div>
-          <div className="dash-welcome-text">
-            <h2>خوش آمدید، {user?.username || "کاربر"} 👋</h2>
-            <p>مدیریت سرویس‌های میزبانی وب شما در یک نگاه</p>
-          </div>
-        </div>
-        <div className="dash-welcome-badge">
-          <span className="status-dot running" />
-          سیستم فعال
-        </div>
-      </div>
-
-      {/* ===== Stats Cards ===== */}
-      <div className="dash-stats-grid">
-        {stats.map((s) => (
-          <div key={s.label} className={`dash-stat-card ${s.color}`}>
-            <div className="dash-stat-icon">{s.icon}</div>
-            <div className="dash-stat-info">
-              <div className="dash-stat-value">{s.value}</div>
-              <div className="dash-stat-label">{s.label}</div>
-              <div className="dash-stat-desc">{s.desc}</div>
-            </div>
-            <div className="dash-stat-glow" />
-          </div>
-        ))}
-      </div>
-
-      {/* ===== Header ===== */}
-      <div className="hosts-header">
-        <div className="hosts-title">
-          <h2>📦 سرویس‌های من</h2>
-          <span className="hosts-subtitle">مدیریت و نظارت بر هاست‌های خود</span>
-        </div>
-        <div className="hosts-header-actions">
-          <div className="hosts-search">
-            <span className="hosts-search-icon">🔍</span>
+    <div className="dash-wrap">
+      {/* ===== Top Bar ===== */}
+      <div className="dash-topbar">
+        <h1>هاست‌های من</h1>
+        <div className="dash-topbar-actions">
+          <div className="dash-search">
             <input
               type="text"
               placeholder="جستجوی سرویس یا دامنه..."
               value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
+            <span className="dash-search-icon">🔍</span>
           </div>
           <button
-            className="btn btn-primary hosts-buy-btn"
+            className="dash-buy-btn"
             onClick={() => navigate("/store")}
           >
             + خرید هاست جدید
@@ -168,163 +93,151 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ===== Tabs ===== */}
-      <div className="hosts-tabs">
-        <button
-          className={`hosts-tab ${activeTab === "all" ? "active" : ""}`}
-          onClick={() => {
-            setActiveTab("all");
-            setCurrentPage(1);
-          }}
+      {/* ===== Category Filter Cards ===== */}
+      <div className="dash-cats">
+        <div
+          className={`dash-cat ${filter === "expired" ? "active" : ""}`}
+          onClick={() => setFilter("expired")}
         >
-          همه سرویس‌ها
-          <span className="hosts-tab-count">{instances.length}</span>
-        </button>
-        <button
-          className={`hosts-tab ${activeTab === "running" ? "active" : ""}`}
-          onClick={() => {
-            setActiveTab("running");
-            setCurrentPage(1);
-          }}
-        >
-          هاست فعال
-          <span className="hosts-tab-count">{runningCount}</span>
-        </button>
-        <button
-          className={`hosts-tab ${activeTab === "stopped" ? "active" : ""}`}
-          onClick={() => {
-            setActiveTab("stopped");
-            setCurrentPage(1);
-          }}
-        >
-          غیر فعال
-          <span className="hosts-tab-count">{stoppedCount}</span>
-        </button>
-      </div>
-
-      {/* ===== Table ===== */}
-      <div className="hosts-table-card">
-        <div className="table-wrapper">
-          <table className="hosts-table">
-            <thead>
-              <tr>
-                <th>مشخصات سرویس</th>
-                <th>موقعیت</th>
-                <th>هزینه</th>
-                <th>تاریخ سررسید</th>
-                <th>عملیات</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginated.length === 0 && (
-                <tr>
-                  <td colSpan={5}>
-                    <div className="empty-state">
-                      <div className="icon">📭</div>
-                      <h3>سرویسی یافت نشد</h3>
-                      <p>برای شروع یک هاست جدید خریداری کنید.</p>
-                    </div>
-                  </td>
-                </tr>
-              )}
-              {paginated.map((inst) => (
-                <tr key={inst.instanceName}>
-                  {/* مشخصات سرویس */}
-                  <td>
-                    <div className="host-service">
-                      <div className="host-service-icon">
-                        {inst.status === "running" ? "🟢" : "⭕"}
-                      </div>
-                      <div className="host-service-info">
-                        <div className="host-service-name">
-                          {inst.instanceName}
-                        </div>
-                        <div className="host-service-domain" dir="ltr">
-                          {inst.domain || "-"}
-                        </div>
-                        <div className="host-service-status">
-                          <span
-                            className={`status-dot ${inst.status === "running" ? "running" : "stopped"}`}
-                          />
-                          {inst.status === "running" ? "فعال" : "متوقف"}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-
-                  {/* موقعیت */}
-                  <td>
-                    <div className="host-location">
-                      <span className="host-location-flag">🇪🇺</span>
-                      اروپا
-                    </div>
-                  </td>
-
-                  {/* هزینه */}
-                  <td>
-                    <span className="host-price">رایگان</span>
-                  </td>
-
-                  {/* تاریخ سررسید */}
-                  <td className="host-due-date">
-                    {inst.createdAt
-                      ? new Date(inst.createdAt).toLocaleDateString("fa-IR")
-                      : "-"}
-                  </td>
-
-                  {/* عملیات */}
-                  <td>
-                    <div className="host-actions">
-                      <button
-                        className="host-action-btn manage"
-                        onClick={() => navigate(`/sites/${inst.instanceName}`)}
-                      >
-                        مدیریت
-                      </button>
-                      <button
-                        className="host-action-btn delete"
-                        onClick={() => handleDelete(inst.instanceName)}
-                      >
-                        حذف
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="dash-cat-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <rect x="4" y="4" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
+              <rect x="13" y="4" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
+              <rect x="4" y="13" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
+            </svg>
+          </div>
+          <div className="dash-cat-label">هاست منقضی</div>
+          <div className="dash-cat-count">۰ سرویس</div>
         </div>
 
-        {/* ===== Pagination ===== */}
-        {totalPages > 1 && (
-          <div className="hosts-pagination">
-            <button
-              className="hosts-page-btn"
-              disabled={safePage === 1}
-              onClick={() => goToPage(safePage - 1)}
-            >
-              قبلی
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <button
-                key={p}
-                className={`hosts-page-btn ${p === safePage ? "active" : ""}`}
-                onClick={() => goToPage(p)}
-              >
-                {p}
-              </button>
-            ))}
-            <button
-              className="hosts-page-btn"
-              disabled={safePage === totalPages}
-              onClick={() => goToPage(safePage + 1)}
-            >
-              بعدی
-            </button>
+        <div
+          className={`dash-cat ${filter === "all" ? "active" : ""}`}
+          onClick={() => setFilter("all")}
+        >
+          <div className="dash-cat-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="6" width="18" height="12" rx="2" stroke="currentColor" strokeWidth="1.6" />
+              <path d="M3 10h18" stroke="currentColor" strokeWidth="1.6" />
+            </svg>
           </div>
-        )}
+          <div className="dash-cat-label">همه سرویس‌ها</div>
+          <div className="dash-cat-count">{instances.length} سرویس</div>
+        </div>
+
+        <div
+          className={`dash-cat ${filter === "running" ? "active" : ""}`}
+          onClick={() => setFilter("running")}
+        >
+          <div className="dash-cat-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
+              <path d="M10 8l6 4-6 4V8z" fill="currentColor" />
+            </svg>
+          </div>
+          <div className="dash-cat-label">هاست فعال</div>
+          <div className="dash-cat-count">{runningCount} سرویس</div>
+        </div>
+
+        <div
+          className={`dash-cat ${filter === "stopped" ? "active" : ""}`}
+          onClick={() => setFilter("stopped")}
+        >
+          <div className="dash-cat-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
+              <path d="M10 9h4v6h-4z" fill="currentColor" />
+            </svg>
+          </div>
+          <div className="dash-cat-label">غیر فعال</div>
+          <div className="dash-cat-count">{stoppedCount} سرویس</div>
+        </div>
       </div>
 
+      {/* ===== Table Head ===== */}
+      <div className="dash-table-head">
+        <span>مشخصه سرویس</span>
+        <span>موقعیت</span>
+        <span>هزینه</span>
+        <span>تاریخ سررسید</span>
+        <span>عملیات</span>
+      </div>
+
+      {/* ===== Service Rows ===== */}
+      {filteredInstances.length === 0 && (
+        <div className="dash-empty">
+          <div className="dash-empty-icon">📭</div>
+          <h3>سرویسی یافت نشد</h3>
+          <p>برای شروع یک هاست جدید خریداری کنید.</p>
+          <button className="dash-buy-btn" onClick={() => navigate("/store")}>
+            + خرید هاست جدید
+          </button>
+        </div>
+      )}
+
+      {filteredInstances.map((inst) => (
+        <div
+          key={inst.instanceName}
+          className="dash-row"
+          onClick={() => navigate(`/sites/${inst.instanceName}`)}
+        >
+          <div className="dash-svc-name">
+            <div className="dash-svc-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="4" width="18" height="7" rx="2" stroke="currentColor" strokeWidth="1.6" />
+                <rect x="3" y="13" width="18" height="7" rx="2" stroke="currentColor" strokeWidth="1.6" />
+                <circle cx="7" cy="7.5" r="1" fill="currentColor" />
+                <circle cx="7" cy="16.5" r="1" fill="currentColor" />
+              </svg>
+            </div>
+            <div>
+              <div className="dash-svc-title">
+                <span className={`dash-dot ${inst.status === "running" ? "on" : "off"}`} style={{ marginInlineEnd: 6 }} />
+                {inst.instanceName}
+              </div>
+              <div className="dash-svc-sub">
+                {inst.status === "running" ? "هاست ابری" : "متوقف شده"}
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <span className="dash-loc-badge">🇮🇷 ایران</span>
+          </div>
+
+          <div className="dash-cost">رایگان</div>
+
+          <div className="dash-due">{formatDate(inst.createdAt)}</div>
+
+          <div>
+            <div
+              className="host-action-btn manage"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/sites/${inst.instanceName}`);
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ verticalAlign: "middle", marginInlineEnd: 4 }}>
+                <path d="M10 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              مدیریت سرویس
+            </div>
+          </div>
+        </div>
+      ))}
+
+      {/* ===== Pagination ===== */}
+      {filteredInstances.length > 8 && (
+        <div className="dash-pagination">
+          <span>
+            نمایش ۱ تا ۸ از {filteredInstances.length} سرویس
+          </span>
+          <div className="dash-page-nav">
+            <div className="dash-page-num">‹</div>
+            <div className="dash-page-num active">۱</div>
+            <div className="dash-page-num">›</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
