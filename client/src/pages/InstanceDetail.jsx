@@ -913,40 +913,80 @@ export default function InstanceDetail({
   // Main Render
   // =============================================================
   return (
-    <div>
+    <div className="idetail">
       {!embedded && (
-        <div className="page-header">
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <button
-              className="btn btn-sm btn-outline"
-              onClick={() => navigate("/sites")}
+        <div className="idetail-hero">
+          <button className="idetail-back" onClick={() => navigate("/sites")}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            بازگشت
+          </button>
+
+          <div className="idetail-hero-main">
+            <div className="idetail-logo">
+              <span>🟢</span>
+            </div>
+            <div className="idetail-hero-info">
+              <h2>{instanceName}</h2>
+              {instance?.domain && (
+                <a
+                  href={`http://${instance.domain}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="idetail-domain"
+                >
+                  {instance.domain} <span className="idetail-domain-arrow">↗</span>
+                </a>
+              )}
+            </div>
+            <div
+              className={`idetail-status ${instance?.status === "running" ? "on" : "off"}`}
             >
-              ←
-            </button>
-            <div>
-              <h2 className="page-title">{instanceName}</h2>
-              <p className="page-desc">
-                {instance?.domain && <span dir="ltr">{instance.domain}</span>}
-                {instance?.domain && " | "}
-                وضعیت: {instance?.status === "running" ? "فعال" : "متوقف"}
-              </p>
+              <span className="idetail-status-dot" />
+              {instance?.status === "running" ? "فعال" : "متوقف"}
+            </div>
+          </div>
+
+          <div className="idetail-hero-meta">
+            <div className="idetail-meta-item">
+              <span className="idetail-meta-icon">🖥️</span>
+              <div className="idetail-meta-content">
+                <span className="idetail-meta-label">نوع سرویس</span>
+                <span className="idetail-meta-value">وردپرس</span>
+              </div>
+            </div>
+            <div className="idetail-meta-item">
+              <span className="idetail-meta-icon">📍</span>
+              <div className="idetail-meta-content">
+                <span className="idetail-meta-label">موقعیت</span>
+                <span className="idetail-meta-value">آلمان 🇩🇪</span>
+              </div>
+            </div>
+            <div className="idetail-meta-item">
+              <span className="idetail-meta-icon">🗓️</span>
+              <div className="idetail-meta-content">
+                <span className="idetail-meta-label">تاریخ ایجاد</span>
+                <span className="idetail-meta-value">
+                  {instance?.createdAt
+                    ? new Date(instance.createdAt).toLocaleDateString("fa-IR")
+                    : "-"}
+                </span>
+              </div>
             </div>
           </div>
         </div>
       )}
 
       {/* Actions */}
-      <div
-        style={{ marginBottom: 16, display: "flex", gap: 8, flexWrap: "wrap" }}
-      >
+      <div className="idetail-actions">
         {instance?.domain && (
           <a
             href={`http://${instance.domain}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn btn-success"
+            className="idetail-btn primary"
           >
-            🌐 باز کردن سایت
+            <span className="idetail-btn-icon">🌐</span>
+            باز کردن سایت
           </a>
         )}
         {instance?.domain && (
@@ -954,93 +994,153 @@ export default function InstanceDetail({
             href={`http://${instance.domain}/wp-admin`}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn btn-info"
+            className="idetail-btn info"
           >
-            🔑 ورود به وردپرس
+            <span className="idetail-btn-icon">🔑</span>
+            ورود به وردپرس
           </a>
         )}
         {instance?.status === "running" ? (
           <button
-            className="btn btn-warning"
+            className="idetail-btn warning"
             onClick={() => handleAction("stop")}
           >
-            ⏹ توقف
+            <span className="idetail-btn-icon">⏹</span>
+            توقف
           </button>
         ) : (
           <button
-            className="btn btn-success"
+            className="idetail-btn success"
             onClick={() => handleAction("start")}
           >
-            ▶ شروع
+            <span className="idetail-btn-icon">▶</span>
+            شروع
           </button>
         )}
       </div>
 
       {/* Tabs */}
-      <div className="tabs">
-        <div
-          className={`tab ${tab === "info" ? "active" : ""}`}
+      <div className="idetail-tabs">
+        <button
+          className={`idetail-tab ${tab === "info" ? "active" : ""}`}
           onClick={() => setTab("info")}
         >
-          📋 اطلاعات
-        </div>
-        <div
-          className={`tab ${tab === "logs" ? "active" : ""}`}
+          <span className="idetail-tab-icon">📋</span>
+          اطلاعات
+        </button>
+        <button
+          className={`idetail-tab ${tab === "logs" ? "active" : ""}`}
           onClick={() => setTab("logs")}
         >
-          📜 لاگ‌ها
-        </div>
-        <div
-          className={`tab ${tab === "resources" ? "active" : ""}`}
+          <span className="idetail-tab-icon">📜</span>
+          لاگ‌ها
+        </button>
+        <button
+          className={`idetail-tab ${tab === "resources" ? "active" : ""}`}
           onClick={() => setTab("resources")}
         >
-          📊 منابع
-        </div>
-        <div
-          className={`tab ${tab === "files" ? "active" : ""}`}
+          <span className="idetail-tab-icon">📊</span>
+          منابع
+        </button>
+        <button
+          className={`idetail-tab ${tab === "files" ? "active" : ""}`}
           onClick={() => setTab("files")}
         >
-          📁 فایل‌ها
-        </div>
+          <span className="idetail-tab-icon">📁</span>
+          فایل‌ها
+        </button>
       </div>
 
       {/* ============== Info Tab ============== */}
       {tab === "info" && (
-        <div className="card">
-          <div className="card-header">
-            <div className="card-title">📋 اطلاعات نمونه</div>
-          </div>
-          <div className="card-body">
-            <div className="grid-2">
-              <div>
-                <p style={{ fontSize: 13, color: "var(--gray-500)" }}>
-                  نام نمونه
-                </p>
-                <p style={{ fontWeight: "bold" }}>{instanceName}</p>
-              </div>
-              <div>
-                <p style={{ fontSize: 13, color: "var(--gray-500)" }}>دامنه</p>
-                <p style={{ fontWeight: "bold", direction: "ltr" }}>
-                  {instance?.domain || "-"}
-                </p>
-              </div>
-              <div>
-                <p style={{ fontSize: 13, color: "var(--gray-500)" }}>وضعیت</p>
-                <span
-                  className={`badge ${instance?.status === "running" ? "badge-success" : "badge-danger"}`}
-                >
+        <div className="idetail-info">
+          <div className="idetail-stat-strip">
+            <div className="idetail-stat primary-soft">
+              <span className="idetail-stat-icon">🟢</span>
+              <div className="idetail-stat-content">
+                <span className="idetail-stat-label">وضعیت</span>
+                <span className="idetail-stat-value">
                   {instance?.status === "running" ? "فعال" : "متوقف"}
                 </span>
               </div>
-              <div>
-                <p style={{ fontSize: 13, color: "var(--gray-500)" }}>
-                  تاریخ ایجاد
-                </p>
-                <p>
+            </div>
+            <div className="idetail-stat green-soft">
+              <span className="idetail-stat-icon">💰</span>
+              <div className="idetail-stat-content">
+                <span className="idetail-stat-label">نوع سرویس</span>
+                <span className="idetail-stat-value">وردپرس</span>
+              </div>
+            </div>
+            <div className="idetail-stat blue-soft">
+              <span className="idetail-stat-icon">🎯</span>
+              <div className="idetail-stat-content">
+                <span className="idetail-stat-label">موقعیت</span>
+                <span className="idetail-stat-value">آلمان 🇩🇪</span>
+              </div>
+            </div>
+            <div className="idetail-stat purple-soft">
+              <span className="idetail-stat-icon">🗓️</span>
+              <div className="idetail-stat-content">
+                <span className="idetail-stat-label">تاریخ ایجاد</span>
+                <span className="idetail-stat-value">
                   {instance?.createdAt
                     ? new Date(instance.createdAt).toLocaleDateString("fa-IR")
                     : "-"}
-                </p>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="idetail-card">
+            <div className="idetail-card-header">
+              <div className="idetail-card-title">🗂️ مشخصات نمونه</div>
+            </div>
+            <div className="idetail-card-body idetail-details-grid">
+              <div className="idetail-detail-item">
+                <span className="idetail-detail-icon">🏷️</span>
+                <div className="idetail-detail-content">
+                  <span className="idetail-detail-label">نام نمونه</span>
+                  <span className="idetail-detail-value">{instanceName}</span>
+                </div>
+              </div>
+              <div className="idetail-detail-item">
+                <span className="idetail-detail-icon">🌐</span>
+                <div className="idetail-detail-content">
+                  <span className="idetail-detail-label">دامنه</span>
+                  <span className="idetail-detail-value" dir="ltr">
+                    {instance?.domain || "-"}
+                  </span>
+                </div>
+              </div>
+              <div className="idetail-detail-item">
+                <span className="idetail-detail-icon">📦</span>
+                <div className="idetail-detail-content">
+                  <span className="idetail-detail-label">پلتفرم</span>
+                  <span className="idetail-detail-value">وردپرس</span>
+                </div>
+              </div>
+              <div className="idetail-detail-item">
+                <span className="idetail-detail-icon">🧩</span>
+                <div className="idetail-detail-content">
+                  <span className="idetail-detail-label">وضعیت</span>
+                  <span className="idetail-detail-value">
+                    {instance?.status === "running" ? "در حال اجرا" : "متوقف"}
+                  </span>
+                </div>
+              </div>
+              <div className="idetail-detail-item">
+                <span className="idetail-detail-icon">📍</span>
+                <div className="idetail-detail-content">
+                  <span className="idetail-detail-label">دیتاسنتر</span>
+                  <span className="idetail-detail-value">آلمان 🇩🇪</span>
+                </div>
+              </div>
+              <div className="idetail-detail-item">
+                <span className="idetail-detail-icon">💾</span>
+                <div className="idetail-detail-content">
+                  <span className="idetail-detail-label">آخرین بروزرسانی</span>
+                  <span className="idetail-detail-value">-</span>
+                </div>
               </div>
             </div>
           </div>
@@ -1049,49 +1149,34 @@ export default function InstanceDetail({
 
       {/* ============== Logs Tab ============== */}
       {tab === "logs" && (
-        <div className="card">
-          <div className="card-header">
-            <div className="card-title">📜 لاگ‌ها</div>
-            <div className="flex" style={{ gap: 8 }}>
+        <div className="idetail-logs-card">
+          <div className="idetail-logs-header">
+            <div className="idetail-logs-title-wrap">
+              <span className="idetail-logs-icon">📜</span>
+              <span className="idetail-logs-title">لاگ‌های سرویس</span>
+            </div>
+            <div className="idetail-logs-tools">
               <select
-                className="form-select"
-                style={{ width: "auto", padding: "6px 10px" }}
+                className="idetail-logs-select"
                 value={logsType}
                 onChange={(e) => setLogsType(e.target.value)}
               >
                 <option value="wp">وردپرس</option>
                 <option value="db">دیتابیس</option>
               </select>
-              <button className="btn btn-sm btn-outline" onClick={loadLogs}>
-                🔄 بروزرسانی
+              <button className="idetail-logs-refresh" onClick={loadLogs}>
+                <span className="idetail-logs-refresh-icon">🔄</span>
+                بروزرسانی
               </button>
             </div>
           </div>
-          <div className="card-body">
+          <div className="idetail-logs-body">
             {logsLoading ? (
               <div className="loading-screen">
                 <div className="spinner" />
               </div>
             ) : (
-              <pre
-                style={{
-                  background: "#1a1a2e",
-                  color: "#a5d6ff",
-                  padding: 16,
-                  borderRadius: 8,
-                  fontSize: 12,
-                  direction: "ltr",
-                  textAlign: "left",
-                  maxHeight: 400,
-                  overflow: "auto",
-                  lineHeight: 1.5,
-                  whiteSpace: "pre-wrap",
-                  fontFamily: "monospace",
-                  margin: 0,
-                }}
-              >
-                {logs}
-              </pre>
+              <pre className="idetail-logs-content">{logs}</pre>
             )}
           </div>
         </div>
@@ -1099,22 +1184,20 @@ export default function InstanceDetail({
 
       {/* ============== Resources Tab ============== */}
       {tab === "resources" && (
-        <div>
+        <div className="idetail-resources">
           {resourceUsage ? (
             <>
-              <div className="card">
-                <div className="card-header">
-                  <div className="card-title">📊 مصرف منابع - وردپرس</div>
+              <div className="idetail-res-card">
+                <div className="idetail-card-header">
+                  <div className="idetail-card-title">
+                    <span className="idetail-card-title-icon">⚙️</span>
+                    مصرف منابع - وردپرس
+                  </div>
+                  <span className="idetail-card-badge">زنده</span>
                 </div>
-                <div className="card-body">
+                <div className="idetail-card-body idetail-res-body">
                   {resourceUsage.wordpress ? (
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 16,
-                      }}
-                    >
+                    <div className="idetail-res-meters">
                       <ResourceMeter
                         label="CPU"
                         used={resourceUsage.wordpress.cpu?.usage || 0}
@@ -1154,19 +1237,17 @@ export default function InstanceDetail({
                 </div>
               </div>
 
-              <div className="card">
-                <div className="card-header">
-                  <div className="card-title">📊 مصرف منابع - دیتابیس</div>
+              <div className="idetail-res-card">
+                <div className="idetail-card-header">
+                  <div className="idetail-card-title">
+                    <span className="idetail-card-title-icon">🗄️</span>
+                    مصرف منابع - دیتابیس
+                  </div>
+                  <span className="idetail-card-badge">زنده</span>
                 </div>
-                <div className="card-body">
+                <div className="idetail-card-body idetail-res-body">
                   {resourceUsage.database ? (
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 16,
-                      }}
-                    >
+                    <div className="idetail-res-meters">
                       <ResourceMeter
                         label="CPU"
                         used={resourceUsage.database.cpu?.usage || 0}
@@ -1207,14 +1288,10 @@ export default function InstanceDetail({
               </div>
             </>
           ) : (
-            <div className="card">
-              <div className="card-body">
-                <div className="empty-state">
-                  <div className="icon">📊</div>
-                  <h3>داده‌ای موجود نیست</h3>
-                  <p>برای مشاهده مصرف منابع، سایت باید فعال باشد</p>
-                </div>
-              </div>
+            <div className="idetail-empty">
+              <div className="idetail-empty-icon">📊</div>
+              <h3>داده‌ای موجود نیست</h3>
+              <p>برای مشاهده مصرف منابع، سایت باید فعال باشد</p>
             </div>
           )}
         </div>
