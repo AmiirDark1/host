@@ -197,12 +197,12 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ===== Services Section ===== */}
+      {/* ===== My Sites Section ===== */}
       <div className="mdash-section">
         <div className="mdash-section-head">
           <div className="mdash-section-title">
-            <h2>سرویس‌های من</h2>
-            <p>{filteredInstances.length} سرویس نمایش داده می‌شود</p>
+            <h2>🌐 سایت‌های من</h2>
+            <p>{filteredInstances.length} سایت در حساب شما</p>
           </div>
           <div className="mdash-search">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="mdash-search-icon">
@@ -211,7 +211,7 @@ export default function Dashboard() {
             </svg>
             <input
               type="text"
-              placeholder="جستجوی سرویس یا دامنه..."
+              placeholder="جستجوی سایت یا دامنه..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -221,7 +221,10 @@ export default function Dashboard() {
         {/* Filter Tabs */}
         <div className="mdash-tabs">
           <button className={`mdash-tab ${filter === "all" ? "active" : ""}`} onClick={() => setFilter("all")}>
-            همه سرویس‌ها
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ display: "inline-block", verticalAlign: "middle" }}>
+              <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            همه سایت‌ها
             <span className="mdash-tab-count">{instances.length}</span>
           </button>
           <button className={`mdash-tab ${filter === "running" ? "active" : ""}`} onClick={() => setFilter("running")}>
@@ -236,16 +239,16 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* Service Cards Grid */}
+        {/* Site Cards Grid */}
         {filteredInstances.length === 0 ? (
           <div className="mdash-empty">
             <div className="mdash-empty-icon">
               <svg width="52" height="52" viewBox="0 0 24 24" fill="none">
-                <path d="M4 4h16v16H4V4z" stroke="currentColor" strokeWidth="1.5" />
-                <path d="M9 9v10M15 9v10M4 13h16" stroke="currentColor" strokeWidth="1.5" />
+                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
               </svg>
             </div>
-            <h3>{searchQuery ? "سرویسی یافت نشد" : "هنوز سرویسی ندارید"}</h3>
+            <h3>{searchQuery ? "سایتی یافت نشد" : "هنوز سایتی ندارید"}</h3>
             <p>
               {searchQuery
                 ? `نتیجه‌ای برای «${searchQuery}» پیدا نشد`
@@ -262,78 +265,86 @@ export default function Dashboard() {
             {filteredInstances.map((inst) => (
               <div
                 key={inst.instanceName}
-                className="mdash-card"
+                className={`mdash-site-card ${inst.status === "running" ? "running" : "stopped"}`}
                 onClick={() => navigate(`/sites/${inst.instanceName}`)}
               >
-                <div className="mdash-card-top">
-                  <div className="mdash-card-icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                      <rect x="3" y="4" width="18" height="7" rx="2" stroke="currentColor" strokeWidth="1.8" />
-                      <rect x="3" y="13" width="18" height="7" rx="2" stroke="currentColor" strokeWidth="1.8" />
-                      <circle cx="7" cy="7.5" r="1.2" fill="currentColor" />
-                      <circle cx="7" cy="16.5" r="1.2" fill="currentColor" />
-                    </svg>
+                {/* Cover / Header */}
+                <div className="mdash-site-cover">
+                  <div className="mdash-site-cover-top">
+                    <div className="mdash-site-logo">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+                        <path d="M4 12h16M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                      </svg>
+                    </div>
+                    <div className="mdash-site-title">
+                      <h3>{inst.instanceName}</h3>
+                      <a
+                        href={inst.url || "#"}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="mdash-site-domain"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ display: "inline-block", verticalAlign: "middle", marginInlineEnd: 4 }}>
+                          <path d="M10 14L20 4M20 4h-6M20 4v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          <path d="M20 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                        </svg>
+                        {inst.domain || "بدون دامنه"}
+                      </a>
+                    </div>
+                    <div className={`mdash-site-badge ${inst.status}`}>
+                      <span className="mdash-site-badge-dot" />
+                      {inst.status === "running" ? "فعال" : "متوقف"}
+                    </div>
                   </div>
-                  <div className="mdash-card-status">
-                    <span className={`mdash-status-dot ${inst.status === "running" ? "on" : "off"}`} />
-                    {inst.status === "running" ? "فعال" : "متوقف"}
+                  <div className="mdash-site-cover-glow" />
+                </div>
+
+                {/* Details */}
+                <div className="mdash-site-details">
+                  <div className="mdash-site-detail">
+                    <span className="mdash-site-detail-icon">🌍</span>
+                    <span className="mdash-site-detail-label">موقعیت</span>
+                    <span className="mdash-site-detail-value">🇮🇷 ایران</span>
+                  </div>
+                  <div className="mdash-site-detail">
+                    <span className="mdash-site-detail-icon">🛡️</span>
+                    <span className="mdash-site-detail-label">SSL</span>
+                    <span className={`mdash-site-detail-value ${inst.sslStatus === "active" ? "ssl-ok" : "ssl-pending"}`}>
+                      {inst.sslStatus === "active" ? "فعال ✓" : inst.sslStatus === "pending" ? "در انتظار" : "—"}
+                    </span>
+                  </div>
+                  <div className="mdash-site-detail">
+                    <span className="mdash-site-detail-icon">💳</span>
+                    <span className="mdash-site-detail-label">هزینه</span>
+                    <span className="mdash-site-detail-value mdash-free">رایگان</span>
+                  </div>
+                  <div className="mdash-site-detail">
+                    <span className="mdash-site-detail-icon">📅</span>
+                    <span className="mdash-site-detail-label">ایجاد</span>
+                    <span className="mdash-site-detail-value">{formatDate(inst.createdAt)}</span>
                   </div>
                 </div>
 
-                <div className="mdash-card-body">
-                  <h3 className="mdash-card-name">{inst.instanceName}</h3>
-                  <a
-                    className="mdash-card-domain"
-                    href={inst.url || "#"}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {inst.domain || "بدون دامنه"}
-                  </a>
-
-                  <div className="mdash-card-meta">
-                    <div className="mdash-meta-item">
-                      <span className="mdash-meta-label">موقعیت</span>
-                      <span className="mdash-meta-value">🇮🇷 ایران</span>
-                    </div>
-                    <div className="mdash-meta-item">
-                      <span className="mdash-meta-label">هزینه</span>
-                      <span className="mdash-meta-value mdash-free">رایگان</span>
-                    </div>
-                    <div className="mdash-meta-item">
-                      <span className="mdash-meta-label">SSL</span>
-                      <span className={`mdash-meta-value ${inst.sslStatus === "active" ? "ssl-ok" : "ssl-pending"}`}>
-                        {inst.sslStatus === "active" ? "✓ فعال" : inst.sslStatus === "pending" ? "⏳ در انتظار" : "—"}
-                      </span>
-                    </div>
-                    <div className="mdash-meta-item">
-                      <span className="mdash-meta-label">تاریخ ایجاد</span>
-                      <span className="mdash-meta-value">{formatDate(inst.createdAt)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mdash-card-actions">
+                {/* Actions */}
+                <div className="mdash-site-actions">
                   <button
-                    className="mdash-action manage"
+                    className="mdash-site-btn manage"
                     onClick={(e) => {
                       e.stopPropagation();
                       navigate(`/sites/${inst.instanceName}`);
                     }}
                   >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ display: "inline-block", verticalAlign: "middle", marginInlineEnd: 5 }}>
+                      <path d="M7 8h10M7 12h10M7 16h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
                     مدیریت
                   </button>
-                  <button
-                    className="mdash-action toggle"
-                    onClick={(e) => handleToggle(inst, e)}
-                  >
+                  <button className="mdash-site-btn startstop" onClick={(e) => handleToggle(inst, e)}>
                     {inst.status === "running" ? "توقف" : "شروع"}
                   </button>
-                  <button
-                    className="mdash-action delete"
-                    onClick={(e) => handleDelete(inst.instanceName, e)}
-                  >
+                  <button className="mdash-site-btn delete" onClick={(e) => handleDelete(inst.instanceName, e)}>
                     حذف
                   </button>
                 </div>
