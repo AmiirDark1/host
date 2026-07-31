@@ -1,30 +1,5 @@
-# ============================================================
-# WordPress Panel - Complete Stack
-# ============================================================
-# با یک دستور `docker-compose up -d` همه سرویس‌ها بالا می‌آیند:
-#   - Nginx Reverse Proxy (دریافت ترافیک HTTP/HTTPS)
-#   - Acme Companion (صدور خودکار SSL Let's Encrypt)
-#   - WordPress Panel (پنل مدیریت کانتینرها)
-#
-# نکته: شبکه `nginx-proxy` باید از قبل ساخته شده باشد.
-# برای ساخت خودکار آن:
-#   docker network create nginx-proxy
-# ============================================================
-
-networks:
-  # شبکه عمومی برای Nginx Proxy - همه کانتینرها به این متصل می‌شوند
-  # این شبکه به صورت external است چون dockerManager
-  # کانتینرهای وردپرس جدید را هم به آن متصل می‌کند
-  nginx-proxy:
-    external: true
-    name: nginx-proxy
-
 services:
-  # ===================================================================
-  # 1. Nginx Reverse Proxy
-  # ===================================================================
-  # تمام درخواست‌های HTTP/HTTPS را دریافت کرده و بر اساس دامنه
-  # به کانتینر وردپرس مناسب هدایت می‌کند.
+  # ===== Nginx Reverse Proxy =====
   nginx-proxy:
     image: nginxproxy/nginx-proxy:latest
     container_name: nginx-proxy
@@ -34,11 +9,11 @@ services:
       - "443:443"
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
-      - ./nginx/custom:/etc/nginx/custom:ro
-      - ./nginx/vhost.d:/etc/nginx/vhost.d
-      - ./nginx/html:/usr/share/nginx/html
-      - ./nginx/certs:/etc/nginx/certs:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./wordpress-panel/infrastructure/nginx/custom:/etc/nginx/custom:ro
+      - ./wordpress-panel/infrastructure/nginx/vhost.d:/etc/nginx/vhost.d
+      - ./wordpress-panel/infrastructure/nginx/html:/usr/share/nginx/html
+      - ./wordpress-panel/infrastructure/nginx/certs:/etc/nginx/certs:ro
+      - ./wordpress-panel/infrastructure/nginx/conf.d:/etc/nginx/conf.d
     networks:
       - nginx-proxy
     labels:
@@ -49,11 +24,7 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # ===================================================================
-  # 2. Acme Companion (SSL خودکار Let's Encrypt)
-  # ===================================================================
-  # به صورت خودکار برای هر دامنه گواهی Let's Encrypt صادر می‌کند
-  # و هر ۶۰ روز یکبار تمدید می‌کند.
+  # ===== Acme Companion (SSL خودکار) =====
   acme-companion:
     image: nginxproxy/acme-companion:latest
     container_name: acme-companion
@@ -64,10 +35,10 @@ services:
       - ACME_CA_URI=https://acme-v02.api.letsencrypt.org/directory
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./nginx/certs:/etc/nginx/certs
-      - ./nginx/vhost.d:/etc/nginx/vhost.d
-      - ./nginx/html:/usr/share/nginx/html
-      - ./nginx/acme:/etc/acme.sh
+      - ./wordpress-panel/infrastructure/nginx/certs:/etc/nginx/certs
+      - ./wordpress-panel/infrastructure/nginx/vhost.d:/etc/nginx/vhost.d
+      - ./wordpress-panel/infrastructure/nginx/html:/usr/share/nginx/html
+      - ./wordpress-panel/infrastructure/nginx/acme:/etc/acme.sh
     networks:
       - nginx-proxy
     depends_on:
@@ -78,23 +49,18 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # ===================================================================
-  # 3. WordPress Panel (پنل مدیریت)
-  # ===================================================================
-  # پنل مدیریتی برای ساخت/مدیریت کانتینرهای وردپرس
+  # ===== Management Panel =====
   wordpress-panel:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    build: .
     container_name: wordpress-panel
     ports:
       - "3000:3000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./nginx/certs:/app/infrastructure/nginx/certs
+      - ./wordpress-panel/infrastructure/nginx/certs:/app/infrastructure/nginx/certs
     environment:
       - NODE_ENV=production
-      - MIRROR_REGISTRY=docker.m.daocloud.io
+      - SERVER_IP=${SERVER_IP:-127.0.0.1}
     restart: unless-stopped
     stop_grace_period: 60s
     privileged: true
@@ -102,4 +68,7 @@ services:
       - nginx-proxy
     depends_on:
       - nginx-proxy
-      - acme-companion
+
+networks:
+  nginx-proxy:
+    external: true
