@@ -635,6 +635,159 @@ class DockerManager {
   }
 
   // =================================================================
+  // File Manager - Rename file/directory
+  // =================================================================
+  async renameFile(instanceName, containerType, oldPath, newName) {
+    try {
+      const containerName = containerType === 'db' ? `db-${instanceName}` : `wp-${instanceName}`;
+      const container = docker.getContainer(containerName);
+
+      const resolvedOld = containerType === 'wp' ? this._resolveWpPath(oldPath) : oldPath;
+      const oldDir = resolvedOld.substring(0, resolvedOld.lastIndexOf('/'));
+      const resolvedNew = containerType === 'wp' ? this._resolveWpPath(`${oldDir}/${newName}`) : `${oldDir}/${newName}`;
+
+      const escapedOld = this._escapePath(resolvedOld);
+      const escapedNew = this._escapePath(resolvedNew);
+
+      const exec = await container.exec({
+        Cmd: ['sh', '-c', `mv '${escapedOld}' '${escapedNew}' 2>&1`],
+        AttachStdout: true,
+        AttachStderr: true,
+      });
+
+      const stream = await exec.start({ Tty: true, Detach: false, stdin: false });
+
+      return new Promise((resolve) => {
+        let output = '';
+        stream.on('data', (chunk) => { output += chunk.toString(); });
+        stream.on('end', () => {
+          const clean = this._cleanOutput(output);
+          if (clean && !clean.includes('No such file')) {
+            return resolve({ success: true, message: `Renamed to ${newName}` });
+          }
+          resolve({ success: false, error: clean || 'Rename failed' });
+        });
+        stream.on('error', (err) => resolve({ success: false, error: err.message }));
+      });
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  // =================================================================
+  // File Manager - Copy file/directory
+  // =================================================================
+  async copyFile(instanceName, containerType, srcPath, destDir) {
+    try {
+      const containerName = containerType === 'db' ? `db-${instanceName}` : `wp-${instanceName}`;
+      const container = docker.getContainer(containerName);
+
+      const resolvedSrc = containerType === 'wp' ? this._resolveWpPath(srcPath) : srcPath;
+      const resolvedDestDir = containerType === 'wp' ? this._resolveWpPath(destDir) : destDir;
+
+      const escapedSrc = this._escapePath(resolvedSrc);
+      const escapedDest = this._escapePath(resolvedDestDir);
+
+      const exec = await container.exec({
+        Cmd: ['sh', '-c', `cp -r '${escapedSrc}' '${escapedDest}/' 2>&1`],
+        AttachStdout: true,
+        AttachStderr: true,
+      });
+
+      const stream = await exec.start({ Tty: true, Detach: false, stdin: false });
+
+      return new Promise((resolve) => {
+        let output = '';
+        stream.on('data', (chunk) => { output += chunk.toString(); });
+        stream.on('end', () => {
+          const clean = this._cleanOutput(output);
+          if (!clean) {
+            return resolve({ success: true, message: 'Copied successfully' });
+          }
+          resolve({ success: false, error: clean });
+        });
+        stream.on('error', (err) => resolve({ success: false, error: err.message }));
+      });
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  // =================================================================
+  // File Manager - Move file/directory
+  // =================================================================
+  async moveFile(instanceName, containerType, srcPath, destDir) {
+    try {
+      const containerName = containerType === 'db' ? `db-${instanceName}` : `wp-${instanceName}`;
+      const container = docker.getContainer(containerName);
+
+      const resolvedSrc = containerType === 'wp' ? this._resolveWpPath(srcPath) : srcPath;
+      const resolvedDestDir = containerType === 'wp' ? this._resolveWpPath(destDir) : destDir;
+
+      const escapedSrc = this._escapePath(resolvedSrc);
+      const escapedDest = this._escapePath(resolvedDestDir);
+
+      const exec = await container.exec({
+        Cmd: ['sh', '-c', `mv '${escapedSrc}' '${escapedDest}/' 2>&1`],
+        AttachStdout: true,
+        AttachStderr: true,
+      });
+
+      const stream = await exec.start({ Tty: true, Detach: false, stdin: false });
+
+      return new Promise((resolve) => {
+        let output = '';
+        stream.on('data', (chunk) => { output += chunk.toString(); });
+        stream.on('end', () => {
+          const clean = this._cleanOutput(output);
+          if (!clean) {
+            return resolve({ success: true, message: 'Moved successfully' });
+          }
+          resolve({ success: false, error: clean });
+        });
+        stream.on('error', (err) => resolve({ success: false, error: err.message }));
+      });
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  // =================================================================
+  // File Manager - Download file as base64
+  // =================================================================
+  async downloadFile(instanceName, containerType, filePath) {
+    try {
+      const containerName = containerType === 'db' ? `db-${instanceName}` : `wp-${instanceName}`;
+      const container = docker.getContainer(containerName);
+      const resolvedPath = containerType === 'wp' ? this._resolveWpPath(filePath) : filePath;
+      const escapedPath = this._escapePath(resolvedPath);
+
+      const exec = await container.exec({
+        Cmd: ['sh', '-c', `base64 '${escapedPath}' 2>&1`],
+        AttachStdout: true,
+        AttachStderr: true,
+      });
+
+      const stream = await exec.start({ Tty: true, Detach: false, stdin: false });
+
+      return new Promise((resolve) => {
+        let output = '';
+        stream.on('data', (chunk) => { output += chunk.toString(); });
+        stream.on('end', () => {
+          const clean = this._cleanOutput(output);
+          if (clean && !clean.includes('No such file')) {
+            return resolve({ success: true, contentBase64: Buffer.from(clean, 'base64') });
+          }
+          resolve({ success: false, error: 'File not found' });
+        });
+        stream.on('error', (err) => resolve({ success: false, error: err.message }));
+      });
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  // =================================================================
   // Cleanup after failed creation
   // =================================================================
   async cleanupFailedInstance(instanceName) {

@@ -25,7 +25,14 @@ export default function InstanceDetail() {
   const [fmEditContent, setFmEditContent] = useState("");
   const [fmMsg, setFmMsg] = useState(null);
   const [fmHistory, setFmHistory] = useState([WP_BASE]);
+  const [fmSelected, setFmSelected] = useState([]);
+  const [fmRenaming, setFmRenaming] = useState(null);
+  const [fmRenameValue, setFmRenameValue] = useState("");
+  const [fmMoveDialog, setFmMoveDialog] = useState(null); // {type: 'copy'|'move', entry}
+  const [fmMoveDest, setFmMoveDest] = useState("");
+  const [fmUploading, setFmUploading] = useState(false);
   const fileInputRef = useRef(null);
+  const [fmSelectAll, setFmSelectAll] = useState(false);
 
   useEffect(() => {
     loadInstance();
@@ -313,35 +320,199 @@ export default function InstanceDetail() {
   }
 
   async function handleFileUpload(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (evt) => {
-      const content = evt.target.result;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setFmUploading(true);
+    let successCount = 0;
+    for (const file of files) {
+      const reader = new FileReader();
+      const content = await new Promise((resolve) => {
+        reader.onload = (evt) => resolve(evt.target.result);
+        reader.readAsText(file);
+      });
       const destPath =
         fmPath === WP_BASE ? `${WP_BASE}/${file.name}` : `${fmPath}/${file.name}`;
       try {
         const data = await apiCall(`/filemanager/upload`, {
           method: "POST",
-          body: {
-            instanceName,
-            containerType: "wp",
-            destPath,
-            content,
-          },
+          body: { instanceName, containerType: "wp", destPath, content },
         });
-        if (data.success) {
-          showMsg(`✅ فایل "${file.name}" آپلود شد`);
-          loadFmList();
-        } else {
-          showMsg(data.error || "Failed to upload", true);
-        }
+        if (data.success) successCount++;
       } catch (err) {
         showMsg(err.message, true);
       }
-    };
-    reader.readAsText(file);
+    }
+    setFmUploading(false);
+    showMsg(`✅ ${successCount} فایل آپلود شد`);
+    setFmSelected([]);
+    setFmSelectAll(false);
+    loadFmList();
     e.target.value = "";
+  }
+
+  // ===== cPanel/DirectAdmin style helpers =====
+
+  function goHome() {
+    setFmHistory((prev) => [WP_BASE, ...prev.slice(1)]);
+    setFmPath(WP_BASE);
+    setFmSelected([]);
+    setFmSelectAll(false);
+  }
+
+  function toggleSelect(entry) {
+    setFmSelected((prev) => {
+      const exists = prev.find((e) => e.path === entry.path);
+      if (exists) return prev.filter((e) => e.path !== entry.path);
+      return [...prev, entry];
+    });
+  }
+
+  function toggleSelectAll() {
+    if (fmSelectAll) {
+      setFmSelected([]);
+      setFmSelectAll(false);
+    } else {
+      setFmSelected(fmEntries);
+      setFmSelectAll(true);
+    }
+  }
+
+  function startRename(entry) {
+    setFmRenaming(entry);
+    setFmRenameValue(entry.name);
+  }
+
+  async function submitRename() {
+    if (!fmRenaming || !fmRenameValue.trim()) return;
+    if (fmRenameValue === fmRenaming.name) {
+      setFmRenaming(null);
+      return;
+    }
+    try {
+      const data = await apiCall(`/filemanager/rename`, {
+        method: "POST",
+        body: {
+          instanceName,
+          containerType: "wp",
+          oldPath: fmRenaming.path,
+          newName: fmRenameValue.trim(),
+        },
+      });
+      if (data.success) {
+        showMsg(`✅ به "${fmRenameValue.trim()}" تغییر نام یافت`);
+        setFmRenaming(null);
+        loadFmList();
+      } else {
+        showMsg(data.error || "Failed to rename", true);
+      }
+    } catch (err) {
+      showMsg(err.message, true);
+    }
+  }
+
+  function openCopyMove(entry, type) {
+    setFmMoveDialog({ type, entry });
+    setFmMoveDest(fmPath);
+  }
+
+  async function submitCopyMove() {
+    if (!fmMoveDialog || !fmMoveDest.trim()) return;
+    const { type, entry } = fmMoveDialog;
+    try {
+      const data = await apiCall(`/filemanager/${type}`, {
+        method: "POST",
+        body: {
+          instanceName,
+          containerType: "wp",
+          srcPath: entry.path,
+          destDir: fmMoveDest.trim(),
+        },
+      });
+      if (data.success) {
+        showMsg(
+          `✅ ${type === "copy" ? "کپی" : "انتقال"} "${entry.name}" انجام شد`,
+        );
+        setFmMoveDialog(null);
+        setFmMoveDest("");
+        loadFmList();
+      } else {
+        showMsg(data.error || `Failed to ${type}`, true);
+      }
+    } catch (err) {
+      showMsg(err.message, true);
+    }
+  }
+
+  async function handleDownload(entry) {
+    try {
+      showMsg(`⏳ در حال آماده‌سازی "${entry.name}"...`);
+      const data = await apiCall(
+        `/filemanager/download?instanceName=${instanceName}&containerType=wp&filePath=${encodeURIComponent(entry.path)}`,
+      );
+      if (data.success && data.contentBase64) {
+        const binary = atob(data.contentBase64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        const blob = new Blob([bytes]);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = entry.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showMsg(`⬇️ دانلود "${entry.name}" شروع شد`);
+      } else {
+        showMsg(data.error || "Failed to download", true);
+      }
+    } catch (err) {
+      showMsg(err.message, true);
+    }
+  }
+
+  async function deleteSelected() {
+    if (fmSelected.length === 0) return;
+    if (
+      !window.confirm(
+        `آیا از حذف ${fmSelected.length} آیتم مطمئن هستید؟`,
+      )
+    )
+      return;
+    let successCount = 0;
+    for (const entry of fmSelected) {
+      try {
+        const data = await apiCall(`/filemanager/delete`, {
+          method: "DELETE",
+          body: { instanceName, containerType: "wp", filePath: entry.path },
+        });
+        if (data.success) successCount++;
+      } catch (err) {
+        /* ignore individual errors */
+      }
+    }
+    showMsg(`✅ ${successCount} آیتم حذف شد`);
+    setFmSelected([]);
+    setFmSelectAll(false);
+    loadFmList();
+  }
+
+  function getBreadcrumbs() {
+    const parts = [];
+    if (fmPath === WP_BASE) {
+      return [{ label: "public_html", path: WP_BASE }];
+    }
+    const rel = fmPath.replace(WP_BASE, "").replace(/^\//, "");
+    let cum = WP_BASE;
+    parts.push({ label: "public_html", path: WP_BASE });
+    for (const seg of rel.split("/")) {
+      if (!seg) continue;
+      cum = cum === WP_BASE ? `${WP_BASE}/${seg}` : `${cum}/${seg}`;
+      parts.push({ label: seg, path: cum });
+    }
+    return parts;
   }
 
   // =============================================================
@@ -724,44 +895,144 @@ export default function InstanceDetail() {
                 alignItems: "center",
               }}
             >
+              {/* Breadcrumb navigation */}
               <div
                 className="flex"
-                style={{ gap: 4, alignItems: "center", flex: 1 }}
+                style={{ gap: 2, alignItems: "center", flex: 1, flexWrap: "wrap" }}
               >
                 <button
                   className="btn btn-sm btn-outline"
                   onClick={goBack}
                   disabled={fmHistory.length <= 1}
+                  title="بازگشت"
                 >
                   ⬅
                 </button>
-                <span
-                  style={{
-                    fontSize: 13,
-                    color: "var(--gray-500)",
-                    direction: "ltr",
-                  }}
+                <button
+                  className="btn btn-sm btn-outline"
+                  onClick={goHome}
+                  title="خانه"
                 >
-                  {fmPath}
-                </span>
+                  🏠
+                </button>
+                <div className="flex" style={{ gap: 2, alignItems: "center", direction: "ltr" }}>
+                  {getBreadcrumbs().map((crumb, i) => (
+                    <span key={crumb.path} className="flex" style={{ gap: 2, alignItems: "center" }}>
+                      {i > 0 && <span style={{ color: "var(--gray-400)", fontSize: 12 }}>/</span>}
+                      <button
+                        className="btn btn-sm"
+                        style={{
+                          padding: "2px 6px",
+                          fontSize: 12,
+                          fontWeight: i === getBreadcrumbs().length - 1 ? 700 : 400,
+                          color:
+                            i === getBreadcrumbs().length - 1
+                              ? "var(--primary)"
+                              : "var(--gray-700)",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                        }}
+                        onClick={() => {
+                          setFmHistory((prev) => [...prev, crumb.path]);
+                          setFmPath(crumb.path);
+                        }}
+                      >
+                        {crumb.label}
+                      </button>
+                    </span>
+                  ))}
+                </div>
               </div>
 
-              <button className="btn btn-sm btn-primary" onClick={createDir}>
-                📁 پوشه جدید
-              </button>
-              <button className="btn btn-sm btn-success" onClick={uploadFile}>
-                📤 آپلود
-              </button>
-              <button className="btn btn-sm btn-outline" onClick={loadFmList}>
-                🔄
-              </button>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <button className="btn btn-sm btn-primary" onClick={createDir}>
+                  📁 پوشه جدید
+                </button>
+                <button className="btn btn-sm btn-success" onClick={uploadFile}>
+                  📤 آپلود
+                </button>
+                <button className="btn btn-sm btn-outline" onClick={loadFmList} title="بروزرسانی">
+                  🔄
+                </button>
+              </div>
             </div>
           </div>
+
+          {/* Bulk actions bar - shown when items selected */}
+          {fmSelected.length > 0 && (
+            <div
+              className="card"
+              style={{
+                marginBottom: 12,
+                border: "1px solid var(--primary)",
+                background: "var(--primary-50, #eaf2ff)",
+              }}
+            >
+              <div
+                className="card-body"
+                style={{
+                  padding: "8px 16px",
+                  display: "flex",
+                  gap: 8,
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                }}
+              >
+                <span style={{ fontSize: 13, fontWeight: 600 }}>
+                  {fmSelected.length} آیتم انتخاب شده:
+                </span>
+                <button className="btn btn-sm btn-danger" onClick={deleteSelected}>
+                  🗑️ حذف
+                </button>
+                {fmSelected.length === 1 && (
+                  <>
+                    <button
+                      className="btn btn-sm btn-outline"
+                      onClick={() => startRename(fmSelected[0])}
+                    >
+                      ✏️ تغییر نام
+                    </button>
+                    <button
+                      className="btn btn-sm btn-outline"
+                      onClick={() => openCopyMove(fmSelected[0], "copy")}
+                    >
+                      📋 کپی
+                    </button>
+                    <button
+                      className="btn btn-sm btn-outline"
+                      onClick={() => openCopyMove(fmSelected[0], "move")}
+                    >
+                      ✂️ انتقال
+                    </button>
+                    {!fmSelected[0].isDir && (
+                      <button
+                        className="btn btn-sm btn-info"
+                        onClick={() => handleDownload(fmSelected[0])}
+                      >
+                        ⬇️ دانلود
+                      </button>
+                    )}
+                  </>
+                )}
+                <button
+                  className="btn btn-sm btn-outline"
+                  onClick={() => {
+                    setFmSelected([]);
+                    setFmSelectAll(false);
+                  }}
+                >
+                  لغو انتخاب
+                </button>
+              </div>
+            </div>
+          )}
 
           <input
             type="file"
             ref={fileInputRef}
             style={{ display: "none" }}
+            multiple
             onChange={handleFileUpload}
           />
 
@@ -789,62 +1060,129 @@ export default function InstanceDetail() {
                 <table className="table" style={{ margin: 0 }}>
                   <thead>
                     <tr>
-                      <th style={{ width: "40%" }}>نام</th>
-                      <th style={{ width: "15%" }}>اندازه</th>
-                      <th style={{ width: "25%" }}>مجوزها</th>
-                      <th style={{ width: "20%" }}>عملیات</th>
+                      <th style={{ width: 30 }}>
+                        <input
+                          type="checkbox"
+                          checked={fmSelectAll}
+                          onChange={toggleSelectAll}
+                        />
+                      </th>
+                      <th style={{ width: "35%" }}>نام</th>
+                      <th style={{ width: "10%" }}>اندازه</th>
+                      <th style={{ width: "15%" }}>مجوزها</th>
+                      <th style={{ width: "25%" }}>عملیات</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {fmEntries.map((entry, idx) => (
-                      <tr key={idx}>
-                        <td>
-                          <span
-                            style={{
-                              cursor: entry.isDir ? "pointer" : "default",
-                              fontWeight: entry.isDir ? 600 : 400,
-                            }}
-                            onClick={() =>
-                              entry.isDir
-                                ? navigateToDir(entry.path)
-                                : isTextFile(entry.name)
-                                  ? openFile(entry)
-                                  : null
-                            }
-                          >
-                            {getIcon(entry)} {entry.name}
-                          </span>
-                        </td>
-                        <td>{formatSize(entry.size)}</td>
-                        <td
+                    {fmEntries.map((entry, idx) => {
+                      const isSelected = fmSelected.some(
+                        (e) => e.path === entry.path,
+                      );
+                      return (
+                        <tr
+                          key={idx}
                           style={{
-                            fontSize: 12,
-                            direction: "ltr",
-                            fontFamily: "monospace",
+                            background: isSelected
+                              ? "var(--primary-50, #eaf2ff)"
+                              : undefined,
                           }}
+                          onDoubleClick={() =>
+                            entry.isDir
+                              ? navigateToDir(entry.path)
+                              : isTextFile(entry.name)
+                                ? openFile(entry)
+                                : null
+                          }
                         >
-                          {entry.perms}
-                        </td>
-                        <td>
-                          <div style={{ display: "flex", gap: 4 }}>
-                            {!entry.isDir && isTextFile(entry.name) && (
+                          <td>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSelect(entry)}
+                            />
+                          </td>
+                          <td>
+                            <span
+                              style={{
+                                cursor: entry.isDir ? "pointer" : "default",
+                                fontWeight: entry.isDir ? 600 : 400,
+                              }}
+                              onClick={() =>
+                                entry.isDir
+                                  ? navigateToDir(entry.path)
+                                  : isTextFile(entry.name)
+                                    ? openFile(entry)
+                                    : null
+                              }
+                            >
+                              {getIcon(entry)} {entry.name}
+                            </span>
+                          </td>
+                          <td>{formatSize(entry.size)}</td>
+                          <td
+                            style={{
+                              fontSize: 12,
+                              direction: "ltr",
+                              fontFamily: "monospace",
+                            }}
+                          >
+                            {entry.perms}
+                          </td>
+                          <td>
+                            <div
+                              style={{ display: "flex", gap: 4, flexWrap: "wrap" }}
+                            >
+                              {!entry.isDir && isTextFile(entry.name) && (
+                                <button
+                                  className="btn btn-sm btn-outline"
+                                  title="ویرایش"
+                                  onClick={() => openFile(entry)}
+                                >
+                                  ✏️
+                                </button>
+                              )}
                               <button
                                 className="btn btn-sm btn-outline"
-                                onClick={() => openFile(entry)}
+                                title="تغییر نام"
+                                onClick={() => startRename(entry)}
                               >
                                 ✏️
                               </button>
-                            )}
-                            <button
-                              className="btn btn-sm btn-danger"
-                              onClick={() => deleteEntry(entry)}
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                              <button
+                                className="btn btn-sm btn-outline"
+                                title="کپی"
+                                onClick={() => openCopyMove(entry, "copy")}
+                              >
+                                📋
+                              </button>
+                              <button
+                                className="btn btn-sm btn-outline"
+                                title="انتقال"
+                                onClick={() => openCopyMove(entry, "move")}
+                              >
+                                ✂️
+                              </button>
+                              {!entry.isDir && (
+                                <button
+                                  className="btn btn-sm btn-outline"
+                                  title="دانلود"
+                                  onClick={() => handleDownload(entry)}
+                                >
+                                  ⬇️
+                                </button>
+                              )}
+                              <button
+                                className="btn btn-sm btn-danger"
+                                title="حذف"
+                                onClick={() => deleteEntry(entry)}
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}
@@ -909,6 +1247,131 @@ export default function InstanceDetail() {
                   </button>
                   <button className="btn btn-primary" onClick={saveFile}>
                     💾 ذخیره
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Rename modal */}
+          {fmRenaming && (
+            <div
+              className="modal-overlay"
+              onClick={() => setFmRenaming(null)}
+            >
+              <div
+                className="modal"
+                style={{ width: 420 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="modal-header">
+                  <h3>✏️ تغییر نام</h3>
+                  <button
+                    className="btn btn-sm btn-outline"
+                    onClick={() => setFmRenaming(null)}
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="modal-body">
+                  <label
+                    style={{
+                      fontSize: 12,
+                      color: "var(--gray-500)",
+                      display: "block",
+                      marginBottom: 6,
+                    }}
+                  >
+                    نام جدید:
+                  </label>
+                  <input
+                    className="form-input"
+                    style={{ width: "100%" }}
+                    value={fmRenameValue}
+                    onChange={(e) => setFmRenameValue(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && submitRename()}
+                    autoFocus
+                    dir="ltr"
+                  />
+                  <p style={{ fontSize: 12, color: "var(--gray-400)", marginTop: 8 }}>
+                    مسیر فعلی: <span dir="ltr">{fmRenaming.path}</span>
+                  </p>
+                </div>
+                <div className="modal-footer">
+                  <button
+                    className="btn btn-outline"
+                    onClick={() => setFmRenaming(null)}
+                  >
+                    انصراف
+                  </button>
+                  <button className="btn btn-primary" onClick={submitRename}>
+                    ✅ تایید
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Copy/Move modal */}
+          {fmMoveDialog && (
+            <div
+              className="modal-overlay"
+              onClick={() => setFmMoveDialog(null)}
+            >
+              <div
+                className="modal"
+                style={{ width: 480 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="modal-header">
+                  <h3>
+                    {fmMoveDialog.type === "copy"
+                      ? "📋 کپی فایل/پوشه"
+                      : "✂️ انتقال فایل/پوشه"}
+                  </h3>
+                  <button
+                    className="btn btn-sm btn-outline"
+                    onClick={() => setFmMoveDialog(null)}
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="modal-body">
+                  <p style={{ fontSize: 13, marginBottom: 12 }}>
+                    {fmMoveDialog.type === "copy" ? "کپی" : "انتقال"}{" "}
+                    <strong dir="ltr">{fmMoveDialog.entry.name}</strong> به:
+                  </p>
+                  <label
+                    style={{
+                      fontSize: 12,
+                      color: "var(--gray-500)",
+                      display: "block",
+                      marginBottom: 6,
+                    }}
+                  >
+                    مسیر مقصد (محدود به /var/www/html):
+                  </label>
+                  <input
+                    className="form-input"
+                    style={{ width: "100%", direction: "ltr" }}
+                    value={fmMoveDest}
+                    onChange={(e) => setFmMoveDest(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && submitCopyMove()}
+                    placeholder="/var/www/html/..."
+                  />
+                  <p style={{ fontSize: 12, color: "var(--gray-400)", marginTop: 8 }}>
+                    مثال: <span dir="ltr">/var/www/html/wp-content/themes</span>
+                  </p>
+                </div>
+                <div className="modal-footer">
+                  <button
+                    className="btn btn-outline"
+                    onClick={() => setFmMoveDialog(null)}
+                  >
+                    انصراف
+                  </button>
+                  <button className="btn btn-primary" onClick={submitCopyMove}>
+                    {fmMoveDialog.type === "copy" ? "📋 کپی" : "✂️ انتقال"}
                   </button>
                 </div>
               </div>

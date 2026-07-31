@@ -578,6 +578,78 @@ app.post("/api/filemanager/upload", authenticate, fileManagerOnlyWP, async (req,
   }
 });
 
+app.post("/api/filemanager/rename", authenticate, fileManagerOnlyWP, async (req, res) => {
+  try {
+    const { instanceName, containerType, oldPath, newName } = req.body;
+    if (!instanceName || !containerType || !oldPath || !newName) {
+      return res.status(400).json({ error: "instanceName, containerType, oldPath, and newName are required" });
+    }
+    if (req.user.role !== "admin") {
+      const containerName = containerType === "db" ? `db-${instanceName}` : `wp-${instanceName}`;
+      const owns = await dockerManager.userOwnsContainer(containerName, req.user.username);
+      if (!owns) return res.status(403).json({ error: "Access denied" });
+    }
+    const result = await dockerManager.renameFile(instanceName, containerType, oldPath, newName);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/filemanager/copy", authenticate, fileManagerOnlyWP, async (req, res) => {
+  try {
+    const { instanceName, containerType, srcPath, destDir } = req.body;
+    if (!instanceName || !containerType || !srcPath || !destDir) {
+      return res.status(400).json({ error: "instanceName, containerType, srcPath, and destDir are required" });
+    }
+    if (req.user.role !== "admin") {
+      const containerName = containerType === "db" ? `db-${instanceName}` : `wp-${instanceName}`;
+      const owns = await dockerManager.userOwnsContainer(containerName, req.user.username);
+      if (!owns) return res.status(403).json({ error: "Access denied" });
+    }
+    const result = await dockerManager.copyFile(instanceName, containerType, srcPath, destDir);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/filemanager/move", authenticate, fileManagerOnlyWP, async (req, res) => {
+  try {
+    const { instanceName, containerType, srcPath, destDir } = req.body;
+    if (!instanceName || !containerType || !srcPath || !destDir) {
+      return res.status(400).json({ error: "instanceName, containerType, srcPath, and destDir are required" });
+    }
+    if (req.user.role !== "admin") {
+      const containerName = containerType === "db" ? `db-${instanceName}` : `wp-${instanceName}`;
+      const owns = await dockerManager.userOwnsContainer(containerName, req.user.username);
+      if (!owns) return res.status(403).json({ error: "Access denied" });
+    }
+    const result = await dockerManager.moveFile(instanceName, containerType, srcPath, destDir);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/filemanager/download", authenticate, fileManagerOnlyWP, async (req, res) => {
+  try {
+    const { instanceName, containerType, filePath } = req.query;
+    if (!instanceName || !containerType || !filePath) {
+      return res.status(400).json({ error: "instanceName, containerType, and filePath are required" });
+    }
+    if (req.user.role !== "admin") {
+      const containerName = containerType === "db" ? `db-${instanceName}` : `wp-${instanceName}`;
+      const owns = await dockerManager.userOwnsContainer(containerName, req.user.username);
+      if (!owns) return res.status(403).json({ error: "Access denied" });
+    }
+    const result = await dockerManager.downloadFile(instanceName, containerType, filePath);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // =================================================================
 // Catch-all Routes
 // =================================================================
