@@ -1,14 +1,12 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import InstanceDetail from "./InstanceDetail";
 
 export default function Dashboard() {
   const { apiCall, user } = useAuth();
   const navigate = useNavigate();
   const [instances, setInstances] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedInstance, setSelectedInstance] = useState(null);
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -279,7 +277,7 @@ export default function Dashboard() {
                     <div className="host-actions">
                       <button
                         className="host-action-btn manage"
-                        onClick={() => setSelectedInstance(inst.instanceName)}
+                        onClick={() => navigate(`/sites/${inst.instanceName}`)}
                       >
                         مدیریت
                       </button>
@@ -327,23 +325,6 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* ===== Embedded Site Details ===== */}
-      {selectedInstance && (
-        <div className="dash-card" style={{ marginTop: 16 }}>
-          <div className="dash-card-header">
-            <h3>📋 جزئیات سایت</h3>
-            <button
-              className="btn btn-sm btn-outline"
-              onClick={() => setSelectedInstance(null)}
-            >
-              بستن ✕
-            </button>
-          </div>
-          <div className="dash-card-body">
-            <InstanceDetail instanceName={selectedInstance} embedded />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
