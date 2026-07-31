@@ -1255,3 +1255,354 @@ tr:hover td {
   .dash-actions-row { flex-direction: column; }
   .dash-action-btn { width: 100%; }
 }
+
+/* ====== My Hosts (Dashboard) ====== */
+.my-hosts {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* Header */
+.hosts-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.hosts-title {
+  font-size: 22px;
+  font-weight: bold;
+  color: var(--dark);
+  margin-bottom: 4px;
+}
+
+.hosts-subtitle {
+  font-size: 13px;
+  color: var(--gray-500);
+}
+
+.hosts-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.hosts-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--white);
+  border: 1.5px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  min-width: 240px;
+  transition: all 0.2s;
+}
+
+.hosts-search:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.1);
+}
+
+.hosts-search-icon {
+  font-size: 14px;
+  opacity: 0.6;
+}
+
+.hosts-search input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13px;
+  width: 100%;
+  color: var(--dark);
+}
+
+.hosts-search input::placeholder {
+  color: var(--gray-400);
+}
+
+.hosts-filter-btn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.hosts-filter-btn:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+/* Tabs */
+.hosts-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--gray-300);
+  margin-bottom: 20px;
+  overflow-x: auto;
+}
+
+.hosts-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--gray-500);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.hosts-tab:hover {
+  color: var(--dark);
+}
+
+.hosts-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.hosts-tab-count {
+  background: var(--gray-200);
+  color: var(--gray-600);
+  font-size: 11px;
+  font-weight: bold;
+  padding: 2px 8px;
+  border-radius: 12px;
+  min-width: 24px;
+  text-align: center;
+}
+
+.hosts-tab.active .hosts-tab-count {
+  background: rgba(108, 92, 231, 0.12);
+  color: var(--primary);
+}
+
+/* Table Card */
+.hosts-table-card {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.hosts-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.hosts-table th {
+  background: var(--gray-100);
+  font-weight: bold;
+  color: var(--gray-600);
+  font-size: 12px;
+  padding: 14px 16px;
+  text-align: right;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.hosts-table td {
+  padding: 14px 16px;
+  text-align: right;
+  border-bottom: 1px solid var(--gray-200);
+  vertical-align: middle;
+}
+
+.hosts-table tbody tr:hover td {
+  background: var(--gray-100);
+}
+
+.hosts-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Service Cell */
+.host-service {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.host-service-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.host-service-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.host-service-name {
+  font-weight: bold;
+  color: var(--dark);
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.host-service-domain {
+  font-size: 12px;
+  color: var(--info);
+  direction: ltr;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.host-service-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--gray-500);
+}
+
+/* Location */
+.host-location {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--dark);
+  white-space: nowrap;
+}
+
+.host-location-flag {
+  font-size: 16px;
+}
+
+/* Price */
+.host-price {
+  display: inline-block;
+  background: rgba(39, 174, 96, 0.12);
+  color: var(--success);
+  font-size: 12px;
+  font-weight: bold;
+  padding: 4px 12px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+/* Due Date */
+.host-due-date {
+  font-size: 12px;
+  color: var(--gray-600);
+  white-space: nowrap;
+}
+
+/* Actions */
+.host-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.host-action-btn {
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.host-action-btn.manage {
+  background: var(--primary);
+  color: white;
+}
+
+.host-action-btn.manage:hover {
+  background: var(--primary-dark);
+}
+
+.host-action-btn.delete {
+  background: rgba(231, 76, 60, 0.1);
+  color: var(--danger);
+}
+
+.host-action-btn.delete:hover {
+  background: var(--danger);
+  color: white;
+}
+
+/* Pagination */
+.hosts-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px;
+  border-top: 1px solid var(--gray-200);
+  flex-wrap: wrap;
+}
+
+.hosts-page-btn {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1.5px solid var(--gray-300);
+  background: var(--white);
+  color: var(--gray-600);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hosts-page-btn:hover:not(:disabled):not(.active) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.hosts-page-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.hosts-page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Responsive My Hosts */
+@media (max-width: 768px) {
+  .my-hosts { padding: 0; }
+  .hosts-header { flex-direction: column; align-items: stretch; }
+  .hosts-header-actions { flex-direction: column; }
+  .hosts-search { width: 100%; min-width: 0; }
+  .hosts-filter-btn { width: 100%; }
+  .hosts-tab { flex: 1; justify-content: center; padding: 12px 8px; }
+  .host-service-domain { max-width: 140px; }
+}
