@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import InstanceDetail from "./InstanceDetail";
 
 export default function Dashboard() {
   const { apiCall, user, isAdmin } = useAuth();
@@ -9,6 +10,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [serverInfo, setServerInfo] = useState(null);
+  const [selectedInstance, setSelectedInstance] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -229,7 +231,14 @@ export default function Dashboard() {
                 <tbody>
                   {instances.slice(0, 5).map((inst) => (
                     <tr key={inst.instanceName}>
-                      <td style={{ fontWeight: "bold" }}>
+                      <td
+                        style={{
+                          fontWeight: "bold",
+                          cursor: "pointer",
+                          color: "var(--primary)",
+                        }}
+                        onClick={() => setSelectedInstance(inst.instanceName)}
+                      >
                         {inst.instanceName}
                       </td>
                       <td dir="ltr">{inst.domain}</td>
@@ -249,9 +258,7 @@ export default function Dashboard() {
                       <td>
                         <button
                           className="btn btn-sm btn-outline"
-                          onClick={() =>
-                            navigate(`/sites/${inst.instanceName}`)
-                          }
+                          onClick={() => setSelectedInstance(inst.instanceName)}
                         >
                           جزئیات
                         </button>
@@ -261,6 +268,24 @@ export default function Dashboard() {
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Embedded Site Details ===== */}
+      {selectedInstance && (
+        <div className="dash-card" style={{ marginTop: 16 }}>
+          <div className="dash-card-header">
+            <h3>📋 جزئیات سایت</h3>
+            <button
+              className="btn btn-sm btn-outline"
+              onClick={() => setSelectedInstance(null)}
+            >
+              بستن ✕
+            </button>
+          </div>
+          <div className="dash-card-body">
+            <InstanceDetail instanceName={selectedInstance} embedded />
           </div>
         </div>
       )}

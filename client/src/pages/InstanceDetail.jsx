@@ -2,10 +2,15 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-export default function InstanceDetail() {
-  const { instanceName } = useParams();
+export default function InstanceDetail({
+  instanceName: propInstanceName,
+  embedded = false,
+}) {
+  const { instanceName: paramInstanceName } = useParams();
   const { apiCall } = useAuth();
   const navigate = useNavigate();
+  // وقتی که به صورت جاسازی‌شده (Dashboard) استفاده می‌شود، نام نمونه از prop می‌آید
+  const instanceName = propInstanceName || paramInstanceName;
   const [instance, setInstance] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -154,8 +159,7 @@ export default function InstanceDetail() {
         isDir,
         size,
         perms,
-        path:
-          fmPath === WP_BASE ? `${WP_BASE}/${name}` : `${fmPath}/${name}`,
+        path: fmPath === WP_BASE ? `${WP_BASE}/${name}` : `${fmPath}/${name}`,
       });
     }
     return entries;
@@ -345,7 +349,9 @@ export default function InstanceDetail() {
         reader.readAsText(file);
       });
       const destPath =
-        fmPath === WP_BASE ? `${WP_BASE}/${file.name}` : `${fmPath}/${file.name}`;
+        fmPath === WP_BASE
+          ? `${WP_BASE}/${file.name}`
+          : `${fmPath}/${file.name}`;
       try {
         const data = await apiCall(`/filemanager/upload`, {
           method: "POST",
@@ -489,11 +495,7 @@ export default function InstanceDetail() {
 
   async function deleteSelected() {
     if (fmSelected.length === 0) return;
-    if (
-      !window.confirm(
-        `آیا از حذف ${fmSelected.length} آیتم مطمئن هستید؟`,
-      )
-    )
+    if (!window.confirm(`آیا از حذف ${fmSelected.length} آیتم مطمئن هستید؟`))
       return;
     let successCount = 0;
     for (const entry of fmSelected) {
@@ -534,7 +536,8 @@ export default function InstanceDetail() {
   // =============================================================
   function getFileLanguage(name) {
     const ext = name.split(".").pop()?.toLowerCase();
-    if (["js", "jsx", "ts", "tsx", "mjs", "cjs"].includes(ext)) return "javascript";
+    if (["js", "jsx", "ts", "tsx", "mjs", "cjs"].includes(ext))
+      return "javascript";
     if (["php", "php7", "php8"].includes(ext)) return "php";
     if (["html", "htm"].includes(ext)) return "html";
     if (["css", "scss", "less"].includes(ext)) return "css";
@@ -543,7 +546,8 @@ export default function InstanceDetail() {
     if (["py"].includes(ext)) return "python";
     if (["sh", "bash"].includes(ext)) return "shell";
     if (["sql"].includes(ext)) return "sql";
-    if (["xml", "yml", "yaml", "conf", "cfg", "ini", "env"].includes(ext)) return "yaml";
+    if (["xml", "yml", "yaml", "conf", "cfg", "ini", "env"].includes(ext))
+      return "yaml";
     if (["htaccess"].includes(ext)) return "apache";
     if (["txt", "log"].includes(ext)) return "plaintext";
     return "plaintext";
@@ -581,21 +585,46 @@ export default function InstanceDetail() {
     let result = escaped;
 
     // Comments
-    if (lang === "javascript" || lang === "php" || lang === "css" || lang === "sql" || lang === "python" || lang === "shell") {
+    if (
+      lang === "javascript" ||
+      lang === "php" ||
+      lang === "css" ||
+      lang === "sql" ||
+      lang === "python" ||
+      lang === "shell"
+    ) {
       if (lang === "css") {
-        result = result.replace(/(\/\*[\s\S]*?\*\/)/g, '<span style="color:#6A9955">$1</span>');
+        result = result.replace(
+          /(\/\*[\s\S]*?\*\/)/g,
+          '<span style="color:#6A9955">$1</span>',
+        );
       } else {
-        result = result.replace(/(\/\/[^\n]*)/g, '<span style="color:#6A9955">$1</span>');
-        result = result.replace(/(#[^\n]*)/g, '<span style="color:#6A9955">$1</span>');
-        result = result.replace(/(\/\*[\s\S]*?\*\/)/g, '<span style="color:#6A9955">$1</span>');
+        result = result.replace(
+          /(\/\/[^\n]*)/g,
+          '<span style="color:#6A9955">$1</span>',
+        );
+        result = result.replace(
+          /(#[^\n]*)/g,
+          '<span style="color:#6A9955">$1</span>',
+        );
+        result = result.replace(
+          /(\/\*[\s\S]*?\*\/)/g,
+          '<span style="color:#6A9955">$1</span>',
+        );
       }
     }
     if (lang === "html" || lang === "apache") {
-      result = result.replace(/(\u0000L!--[\s\S]*?--\u0000G)/g, '<span style="color:#6A9955">$1</span>');
+      result = result.replace(
+        /(\u0000L!--[\s\S]*?--\u0000G)/g,
+        '<span style="color:#6A9955">$1</span>',
+      );
     }
 
     // Strings
-    result = result.replace(/(\u0000Q[^\u0000A]*?\u0000Q|'[^'\n]*'|\u0060[^\u0060]*\u0060)/g, '<span style="color:#CE9178">$1</span>');
+    result = result.replace(
+      /(\u0000Q[^\u0000A]*?\u0000Q|'[^'\n]*'|\u0060[^\u0060]*\u0060)/g,
+      '<span style="color:#CE9178">$1</span>',
+    );
 
     // Keywords
     const keywords =
@@ -614,21 +643,33 @@ export default function InstanceDetail() {
     result = result.replace(keywords, '<span style="color:#569CD6">$1</span>');
 
     // Numbers
-    result = result.replace(/(\b\d+(\.\d+)?\b)/g, '<span style="color:#B5CEA8">$1</span>');
+    result = result.replace(
+      /(\b\d+(\.\d+)?\b)/g,
+      '<span style="color:#B5CEA8">$1</span>',
+    );
 
     // Functions (name followed by parenthesis)
     if (lang === "javascript" || lang === "php" || lang === "python") {
-      result = result.replace(/(\b[a-zA-Z_]\w*)(?=\s*\()/g, '<span style="color:#DCDCAA">$1</span>');
+      result = result.replace(
+        /(\b[a-zA-Z_]\w*)(?=\s*\()/g,
+        '<span style="color:#DCDCAA">$1</span>',
+      );
     }
 
     // HTML attributes
     if (lang === "html") {
-      result = result.replace(/([a-zA-Z-]+)(=)(\u0000Q)/g, '<span style="color:#9CDCFE">$1</span>$2<span style="color:#CE9178">$3');
+      result = result.replace(
+        /([a-zA-Z-]+)(=)(\u0000Q)/g,
+        '<span style="color:#9CDCFE">$1</span>$2<span style="color:#CE9178">$3',
+      );
     }
 
     // PHP variables
     if (lang === "php") {
-      result = result.replace(/(\$[a-zA-Z_]\w*)/g, '<span style="color:#9CDCFE">$1</span>');
+      result = result.replace(
+        /(\$[a-zA-Z_]\w*)/g,
+        '<span style="color:#9CDCFE">$1</span>',
+      );
     }
 
     // Restore entities
@@ -716,7 +757,10 @@ export default function InstanceDetail() {
     }
     charIndex += match.col - 1;
     editorRef.current.focus();
-    editorRef.current.setSelectionRange(charIndex, charIndex + (len !== undefined ? len : editorFind.length));
+    editorRef.current.setSelectionRange(
+      charIndex,
+      charIndex + (len !== undefined ? len : editorFind.length),
+    );
     setEditorCursor(target);
   }
 
@@ -787,6 +831,35 @@ export default function InstanceDetail() {
   }
 
   // =============================================================
+  // VS Code style editor derived values
+  // =============================================================
+  const fileLang = fmEditing ? getFileLanguage(fmEditing.name) : "plaintext";
+  const highlightedCode = highlightCode(fmEditContent, fileLang);
+  const lineNumbers = Array.from(
+    { length: Math.max(1, (fmEditContent.match(/\n/g) || []).length + 1) },
+    (_, i) => i + 1,
+  );
+  const vsToolbarBtn = {
+    background: "#3c3c3c",
+    color: "#ccc",
+    border: "none",
+    borderRadius: 4,
+    padding: "3px 10px",
+    fontSize: 12,
+    cursor: "pointer",
+  };
+  const vsFindInput = {
+    background: "#3c3c3c",
+    color: "#e8e8e8",
+    border: "1px solid #555",
+    borderRadius: 4,
+    padding: "4px 10px",
+    fontSize: 12,
+    outline: "none",
+    width: 220,
+  };
+
+  // =============================================================
   // Resource Meter sub-component
   // =============================================================
   function ResourceMeter({ label, used, limit, unit }) {
@@ -841,24 +914,26 @@ export default function InstanceDetail() {
   // =============================================================
   return (
     <div>
-      <div className="page-header">
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button
-            className="btn btn-sm btn-outline"
-            onClick={() => navigate("/sites")}
-          >
-            ←
-          </button>
-          <div>
-            <h2 className="page-title">{instanceName}</h2>
-            <p className="page-desc">
-              {instance?.domain && <span dir="ltr">{instance.domain}</span>}
-              {instance?.domain && " | "}
-              وضعیت: {instance?.status === "running" ? "فعال" : "متوقف"}
-            </p>
+      {!embedded && (
+        <div className="page-header">
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button
+              className="btn btn-sm btn-outline"
+              onClick={() => navigate("/sites")}
+            >
+              ←
+            </button>
+            <div>
+              <h2 className="page-title">{instanceName}</h2>
+              <p className="page-desc">
+                {instance?.domain && <span dir="ltr">{instance.domain}</span>}
+                {instance?.domain && " | "}
+                وضعیت: {instance?.status === "running" ? "فعال" : "متوقف"}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Actions */}
       <div
@@ -1042,18 +1117,18 @@ export default function InstanceDetail() {
                     >
                       <ResourceMeter
                         label="CPU"
-                        used={resourceUsage.wordpress.cpuPercent || 0}
-                        limit={resourceUsage.wordpress.cpuLimit || 100}
+                        used={resourceUsage.wordpress.cpu?.usage || 0}
+                        limit={100}
                         unit="%"
                       />
                       <ResourceMeter
                         label="RAM"
                         used={
-                          (resourceUsage.wordpress.memoryBytes || 0) /
+                          (resourceUsage.wordpress.memory?.usage || 0) /
                           (1024 * 1024)
                         }
                         limit={
-                          (resourceUsage.wordpress.memoryLimit ||
+                          (resourceUsage.wordpress.memory?.limit ||
                             512 * 1024 * 1024) /
                           (1024 * 1024)
                         }
@@ -1062,11 +1137,12 @@ export default function InstanceDetail() {
                       <ResourceMeter
                         label="Disk (WP)"
                         used={
-                          (resourceUsage.wordpress.diskBytes || 0) /
+                          (resourceUsage.wordpress.disk?.usage || 0) /
                           (1024 * 1024)
                         }
                         limit={
-                          (resourceUsage.wordpress.diskLimit || 3000) /
+                          (resourceUsage.wordpress.disk?.limit ||
+                            3000 * 1024 * 1024) /
                             (1024 * 1024) || 3000
                         }
                         unit="MB"
@@ -1093,18 +1169,18 @@ export default function InstanceDetail() {
                     >
                       <ResourceMeter
                         label="CPU"
-                        used={resourceUsage.database.cpuPercent || 0}
-                        limit={resourceUsage.database.cpuLimit || 100}
+                        used={resourceUsage.database.cpu?.usage || 0}
+                        limit={100}
                         unit="%"
                       />
                       <ResourceMeter
                         label="RAM"
                         used={
-                          (resourceUsage.database.memoryBytes || 0) /
+                          (resourceUsage.database.memory?.usage || 0) /
                           (1024 * 1024)
                         }
                         limit={
-                          (resourceUsage.database.memoryLimit ||
+                          (resourceUsage.database.memory?.limit ||
                             512 * 1024 * 1024) /
                           (1024 * 1024)
                         }
@@ -1113,11 +1189,12 @@ export default function InstanceDetail() {
                       <ResourceMeter
                         label="Disk (DB)"
                         used={
-                          (resourceUsage.database.diskBytes || 0) /
+                          (resourceUsage.database.disk?.usage || 0) /
                           (1024 * 1024)
                         }
                         limit={
-                          (resourceUsage.database.diskLimit || 1000) /
+                          (resourceUsage.database.disk?.limit ||
+                            1000 * 1024 * 1024) /
                             (1024 * 1024) || 1000
                         }
                         unit="MB"
@@ -1169,7 +1246,12 @@ export default function InstanceDetail() {
               {/* Breadcrumb navigation */}
               <div
                 className="flex"
-                style={{ gap: 2, alignItems: "center", flex: 1, flexWrap: "wrap" }}
+                style={{
+                  gap: 2,
+                  alignItems: "center",
+                  flex: 1,
+                  flexWrap: "wrap",
+                }}
               >
                 <button
                   className="btn btn-sm btn-outline"
@@ -1186,16 +1268,30 @@ export default function InstanceDetail() {
                 >
                   🏠
                 </button>
-                <div className="flex" style={{ gap: 2, alignItems: "center", direction: "ltr" }}>
+                <div
+                  className="flex"
+                  style={{ gap: 2, alignItems: "center", direction: "ltr" }}
+                >
                   {getBreadcrumbs().map((crumb, i) => (
-                    <span key={crumb.path} className="flex" style={{ gap: 2, alignItems: "center" }}>
-                      {i > 0 && <span style={{ color: "var(--gray-400)", fontSize: 12 }}>/</span>}
+                    <span
+                      key={crumb.path}
+                      className="flex"
+                      style={{ gap: 2, alignItems: "center" }}
+                    >
+                      {i > 0 && (
+                        <span
+                          style={{ color: "var(--gray-400)", fontSize: 12 }}
+                        >
+                          /
+                        </span>
+                      )}
                       <button
                         className="btn btn-sm"
                         style={{
                           padding: "2px 6px",
                           fontSize: 12,
-                          fontWeight: i === getBreadcrumbs().length - 1 ? 700 : 400,
+                          fontWeight:
+                            i === getBreadcrumbs().length - 1 ? 700 : 400,
                           color:
                             i === getBreadcrumbs().length - 1
                               ? "var(--primary)"
@@ -1223,7 +1319,11 @@ export default function InstanceDetail() {
                 <button className="btn btn-sm btn-success" onClick={uploadFile}>
                   📤 آپلود
                 </button>
-                <button className="btn btn-sm btn-outline" onClick={loadFmList} title="بروزرسانی">
+                <button
+                  className="btn btn-sm btn-outline"
+                  onClick={loadFmList}
+                  title="بروزرسانی"
+                >
                   🔄
                 </button>
               </div>
@@ -1253,7 +1353,10 @@ export default function InstanceDetail() {
                 <span style={{ fontSize: 13, fontWeight: 600 }}>
                   {fmSelected.length} آیتم انتخاب شده:
                 </span>
-                <button className="btn btn-sm btn-danger" onClick={deleteSelected}>
+                <button
+                  className="btn btn-sm btn-danger"
+                  onClick={deleteSelected}
+                >
                   🗑️ حذف
                 </button>
                 {fmSelected.length === 1 && (
@@ -1401,7 +1504,11 @@ export default function InstanceDetail() {
                           </td>
                           <td>
                             <div
-                              style={{ display: "flex", gap: 4, flexWrap: "wrap" }}
+                              style={{
+                                display: "flex",
+                                gap: 4,
+                                flexWrap: "wrap",
+                              }}
                             >
                               {!entry.isDir && isTextFile(entry.name) && (
                                 <button
@@ -1489,26 +1596,71 @@ export default function InstanceDetail() {
                     flexShrink: 0,
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
-                    <span style={{ fontSize: 14 }}>{getLanguageIcon(fileLang)}</span>
-                    <span style={{ color: "#e8e8e8", fontSize: 13, direction: "ltr", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      flex: 1,
+                      minWidth: 0,
+                    }}
+                  >
+                    <span style={{ fontSize: 14 }}>
+                      {getLanguageIcon(fileLang)}
+                    </span>
+                    <span
+                      style={{
+                        color: "#e8e8e8",
+                        fontSize: 13,
+                        direction: "ltr",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
                       {fmEditing.name}
                     </span>
-                    <span style={{ color: "#666", fontSize: 11, direction: "ltr", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <span
+                      style={{
+                        color: "#666",
+                        fontSize: 11,
+                        direction: "ltr",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
                       {fmEditing.path}
                     </span>
                   </div>
-                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                  <div
+                    style={{ display: "flex", gap: 4, alignItems: "center" }}
+                  >
                     <button
                       className="btn btn-sm"
-                      style={{ background: "#0e639c", color: "#fff", border: "none", borderRadius: 4, padding: "3px 12px", fontSize: 12, cursor: "pointer" }}
+                      style={{
+                        background: "#0e639c",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: 4,
+                        padding: "3px 12px",
+                        fontSize: 12,
+                        cursor: "pointer",
+                      }}
                       onClick={saveFile}
                     >
                       💾 ذخیره {editorChanged ? "•" : ""}
                     </button>
                     <button
                       className="btn btn-sm"
-                      style={{ background: "transparent", color: "#ccc", border: "none", fontSize: 18, cursor: "pointer", padding: "0 6px" }}
+                      style={{
+                        background: "transparent",
+                        color: "#ccc",
+                        border: "none",
+                        fontSize: 18,
+                        cursor: "pointer",
+                        padding: "0 6px",
+                      }}
                       onClick={closeEditor}
                     >
                       ✕
@@ -1517,71 +1669,230 @@ export default function InstanceDetail() {
                 </div>
 
                 {/* Toolbar */}
-                <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "6px 12px", background: "#252526", borderBottom: "1px solid #3c3c3c", flexShrink: 0 }}>
-                  <button className="btn btn-sm" style={vsToolbarBtn} onClick={() => { setEditorFindOpen(true); setTimeout(() => findRef.current?.focus(), 50); }}>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 6,
+                    alignItems: "center",
+                    padding: "6px 12px",
+                    background: "#252526",
+                    borderBottom: "1px solid #3c3c3c",
+                    flexShrink: 0,
+                  }}
+                >
+                  <button
+                    className="btn btn-sm"
+                    style={vsToolbarBtn}
+                    onClick={() => {
+                      setEditorFindOpen(true);
+                      setTimeout(() => findRef.current?.focus(), 50);
+                    }}
+                  >
                     🔍 جستجو
                   </button>
-                  <button className="btn btn-sm" style={vsToolbarBtn} onClick={() => { setEditorGoToOpen(true); setTimeout(() => goToRef.current?.focus(), 50); }}>
+                  <button
+                    className="btn btn-sm"
+                    style={vsToolbarBtn}
+                    onClick={() => {
+                      setEditorGoToOpen(true);
+                      setTimeout(() => goToRef.current?.focus(), 50);
+                    }}
+                  >
                     ⏭ برو به خط
                   </button>
-                  <span style={{ color: "#858585", fontSize: 11, marginRight: "auto", display: "flex", alignItems: "center", gap: 4, direction: "ltr" }}>
+                  <span
+                    style={{
+                      color: "#858585",
+                      fontSize: 11,
+                      marginRight: "auto",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      direction: "ltr",
+                    }}
+                  >
                     {getLanguageIcon(fileLang)} {fileLang}
                   </span>
                 </div>
 
                 {/* Find bar */}
                 {editorFindOpen && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", background: "#1e1e1e", borderBottom: "1px solid #3c3c3c" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "6px 12px",
+                      background: "#1e1e1e",
+                      borderBottom: "1px solid #3c3c3c",
+                    }}
+                  >
                     <input
                       ref={findRef}
                       style={vsFindInput}
                       placeholder="جستجو..."
                       value={editorFind}
-                      onChange={(e) => { setEditorFind(e.target.value); runFind(e.target.value, e.target.value); }}
-                      onKeyDown={(e) => { if (e.key === "Enter") { if (e.shiftKey) findPrev(); else findNext(); } if (e.key === "Escape") setEditorFindOpen(false); }}
+                      onChange={(e) => {
+                        setEditorFind(e.target.value);
+                        runFind(e.target.value, e.target.value);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          if (e.shiftKey) findPrev();
+                          else findNext();
+                        }
+                        if (e.key === "Escape") setEditorFindOpen(false);
+                      }}
                       dir="ltr"
                     />
-                    <button className="btn btn-sm btn-outline" style={{ color: "#ccc", padding: "2px 8px" }} onClick={findPrev} title="قبلی">▲</button>
-                    <button className="btn btn-sm btn-outline" style={{ color: "#ccc", padding: "2px 8px" }} onClick={findNext} title="بعدی">▼</button>
+                    <button
+                      className="btn btn-sm btn-outline"
+                      style={{ color: "#ccc", padding: "2px 8px" }}
+                      onClick={findPrev}
+                      title="قبلی"
+                    >
+                      ▲
+                    </button>
+                    <button
+                      className="btn btn-sm btn-outline"
+                      style={{ color: "#ccc", padding: "2px 8px" }}
+                      onClick={findNext}
+                      title="بعدی"
+                    >
+                      ▼
+                    </button>
                     <span style={{ color: "#9a9a9a", fontSize: 12 }}>
-                      {editorFindMatches.length > 0 ? String(editorFindIndex + 1) + " / " + String(editorFindMatches.length) : editorFind ? "موردی یافت نشد" : ""}
+                      {editorFindMatches.length > 0
+                        ? String(editorFindIndex + 1) +
+                          " / " +
+                          String(editorFindMatches.length)
+                        : editorFind
+                          ? "موردی یافت نشد"
+                          : ""}
                     </span>
                   </div>
                 )}
 
                 {/* Go to line bar */}
                 {editorGoToOpen && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", background: "#1e1e1e", borderBottom: "1px solid #3c3c3c" }}>
-                    <span style={{ color: "#9a9a9a", fontSize: 12 }}>برو به خط:</span>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "6px 12px",
+                      background: "#1e1e1e",
+                      borderBottom: "1px solid #3c3c3c",
+                    }}
+                  >
+                    <span style={{ color: "#9a9a9a", fontSize: 12 }}>
+                      برو به خط:
+                    </span>
                     <input
                       ref={goToRef}
                       style={Object.assign({}, vsFindInput, { width: 80 })}
                       placeholder="خط"
                       value={editorGoTo}
                       onChange={(e) => setEditorGoTo(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") goToLine(); if (e.key === "Escape") setEditorGoToOpen(false); }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") goToLine();
+                        if (e.key === "Escape") setEditorGoToOpen(false);
+                      }}
                     />
-                    <button className="btn btn-sm btn-outline" style={{ color: "#ccc" }} onClick={goToLine}>برو</button>
+                    <button
+                      className="btn btn-sm btn-outline"
+                      style={{ color: "#ccc" }}
+                      onClick={goToLine}
+                    >
+                      برو
+                    </button>
                   </div>
                 )}
 
                 {/* Editor area */}
-                <div style={{ position: "relative", flex: 1, overflow: "hidden", background: "#1e1e1e" }}>
+                <div
+                  style={{
+                    position: "relative",
+                    flex: 1,
+                    overflow: "hidden",
+                    background: "#1e1e1e",
+                  }}
+                >
                   <pre
                     ref={editorPreRef}
-                    style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, margin: 0, padding: "12px 12px 12px 64px", fontSize: 13, fontFamily: "Consolas, Monaco, 'Courier New', monospace", lineHeight: 1.6, color: "#d4d4d4", whiteSpace: "pre", overflow: "auto", pointerEvents: "none", direction: "ltr", textAlign: "left", tabSize: 2 }}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      margin: 0,
+                      padding: "12px 12px 12px 64px",
+                      fontSize: 13,
+                      fontFamily: "Consolas, Monaco, 'Courier New', monospace",
+                      lineHeight: 1.6,
+                      color: "#d4d4d4",
+                      whiteSpace: "pre",
+                      overflow: "auto",
+                      pointerEvents: "none",
+                      direction: "ltr",
+                      textAlign: "left",
+                      tabSize: 2,
+                    }}
                     dangerouslySetInnerHTML={{ __html: highlightedCode }}
                   />
                   <div
-                    style={{ position: "absolute", top: 0, left: 0, width: 52, background: "#252526", borderRight: "1px solid #3c3c3c", padding: "12px 0", textAlign: "right", color: "#858585", fontFamily: "Consolas, Monaco, 'Courier New', monospace", fontSize: 13, lineHeight: 1.6, userSelect: "none", direction: "ltr", transform: "translateY(-" + editorScrollTop + "px)" }}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: 52,
+                      background: "#252526",
+                      borderRight: "1px solid #3c3c3c",
+                      padding: "12px 0",
+                      textAlign: "right",
+                      color: "#858585",
+                      fontFamily: "Consolas, Monaco, 'Courier New', monospace",
+                      fontSize: 13,
+                      lineHeight: 1.6,
+                      userSelect: "none",
+                      direction: "ltr",
+                      transform: "translateY(-" + editorScrollTop + "px)",
+                    }}
                   >
                     {lineNumbers.map((n) => (
-                      <div key={n} style={{ paddingRight: 8 }}>{n}</div>
+                      <div key={n} style={{ paddingRight: 8 }}>
+                        {n}
+                      </div>
                     ))}
                   </div>
                   <textarea
                     ref={editorRef}
-                    style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, margin: 0, padding: "12px 12px 12px 64px", fontSize: 13, fontFamily: "Consolas, Monaco, 'Courier New', monospace", lineHeight: 1.6, color: "transparent", caretColor: "#aeafad", WebkitTextFillColor: "transparent", background: "transparent", border: "none", outline: "none", resize: "none", whiteSpace: "pre", overflow: "auto", direction: "ltr", textAlign: "left", tabSize: 2, zIndex: 2 }}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      margin: 0,
+                      padding: "12px 12px 12px 64px",
+                      fontSize: 13,
+                      fontFamily: "Consolas, Monaco, 'Courier New', monospace",
+                      lineHeight: 1.6,
+                      color: "transparent",
+                      caretColor: "#aeafad",
+                      WebkitTextFillColor: "transparent",
+                      background: "transparent",
+                      border: "none",
+                      outline: "none",
+                      resize: "none",
+                      whiteSpace: "pre",
+                      overflow: "auto",
+                      direction: "ltr",
+                      textAlign: "left",
+                      tabSize: 2,
+                      zIndex: 2,
+                    }}
                     value={fmEditContent}
                     onChange={handleEditorChange}
                     onKeyDown={handleEditorKeyDown}
@@ -1595,11 +1906,27 @@ export default function InstanceDetail() {
                 </div>
 
                 {/* Status bar */}
-                <div style={{ display: "flex", gap: 16, alignItems: "center", background: "#007acc", color: "#fff", padding: "3px 12px", fontSize: 12, flexShrink: 0, direction: "ltr" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 16,
+                    alignItems: "center",
+                    background: "#007acc",
+                    color: "#fff",
+                    padding: "3px 12px",
+                    fontSize: 12,
+                    flexShrink: 0,
+                    direction: "ltr",
+                  }}
+                >
                   <span>⎇ main</span>
                   <span>{editorChanged ? "⚠ اصلاح نشده" : "✔"}</span>
-                  <span style={{ marginLeft: "auto" }}>Ln {editorCursor.line}, Col {editorCursor.col}</span>
-                  <span>{getLanguageIcon(fileLang)} {fileLang}</span>
+                  <span style={{ marginLeft: "auto" }}>
+                    Ln {editorCursor.line}, Col {editorCursor.col}
+                  </span>
+                  <span>
+                    {getLanguageIcon(fileLang)} {fileLang}
+                  </span>
                   <span>UTF-8</span>
                   <span>LF</span>
                   <span>Spaces: 2</span>
@@ -1610,10 +1937,7 @@ export default function InstanceDetail() {
 
           {/* Rename modal */}
           {fmRenaming && (
-            <div
-              className="modal-overlay"
-              onClick={() => setFmRenaming(null)}
-            >
+            <div className="modal-overlay" onClick={() => setFmRenaming(null)}>
               <div
                 className="modal"
                 style={{ width: 420 }}
@@ -1648,7 +1972,13 @@ export default function InstanceDetail() {
                     autoFocus
                     dir="ltr"
                   />
-                  <p style={{ fontSize: 12, color: "var(--gray-400)", marginTop: 8 }}>
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: "var(--gray-400)",
+                      marginTop: 8,
+                    }}
+                  >
                     مسیر فعلی: <span dir="ltr">{fmRenaming.path}</span>
                   </p>
                 </div>
@@ -1714,7 +2044,13 @@ export default function InstanceDetail() {
                     onKeyDown={(e) => e.key === "Enter" && submitCopyMove()}
                     placeholder="/var/www/html/..."
                   />
-                  <p style={{ fontSize: 12, color: "var(--gray-400)", marginTop: 8 }}>
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: "var(--gray-400)",
+                      marginTop: 8,
+                    }}
+                  >
                     مثال: <span dir="ltr">/var/www/html/wp-content/themes</span>
                   </p>
                 </div>
