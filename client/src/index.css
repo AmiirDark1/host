@@ -2602,12 +2602,12 @@ tr:hover td {
 }
 
 /* =====================================================
-   داشبورد مدرن (mdash)
+   داشبورد مدرن (mdash) — الهام‌گرفته از Foyer Design
    ===================================================== */
 .mdash {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 24px;
   padding: 8px 4px 32px;
 }
 
@@ -2638,34 +2638,39 @@ tr:hover td {
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  padding: 34px 36px;
-  border-radius: var(--radius-lg);
-  background: linear-gradient(135deg, var(--gray-800) 0%, var(--gray-700) 100%);
+  padding: 38px 40px;
+  border-radius: 20px;
+  background:
+    radial-gradient(600px 300px at 85% -20%, rgba(108, 92, 231, 0.45), transparent 60%),
+    radial-gradient(500px 250px at 15% 120%, rgba(0, 206, 201, 0.25), transparent 60%),
+    linear-gradient(135deg, var(--gray-800) 0%, var(--gray-700) 100%);
   border: 1px solid var(--border);
   color: #fff;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.22);
 }
 .mdash-hero::before {
   content: "";
   position: absolute;
-  width: 260px;
-  height: 260px;
+  width: 300px;
+  height: 300px;
   border-radius: 50%;
   background: var(--accent-glow);
-  filter: blur(60px);
-  top: -90px;
-  left: -60px;
+  filter: blur(70px);
+  top: -110px;
+  left: -70px;
   pointer-events: none;
+  opacity: 0.55;
 }
 .mdash-hero::after {
   content: "";
   position: absolute;
-  width: 180px;
-  height: 180px;
+  width: 200px;
+  height: 200px;
   border-radius: 50%;
-  background: rgba(0, 206, 201, 0.14);
-  filter: blur(50px);
-  bottom: -60px;
-  right: 20%;
+  background: rgba(0, 206, 201, 0.18);
+  filter: blur(55px);
+  bottom: -70px;
+  right: 22%;
   pointer-events: none;
 }
 .mdash-hero-text {
@@ -2673,15 +2678,17 @@ tr:hover td {
   z-index: 1;
 }
 .mdash-hero-text h1 {
-  font-size: 1.7rem;
+  font-size: 1.85rem;
   font-weight: bold;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   color: #fff;
+  letter-spacing: -0.3px;
 }
 .mdash-hero-text p {
-  color: rgba(255, 255, 255, 0.78);
+  color: rgba(255, 255, 255, 0.72);
   font-size: 0.92rem;
   line-height: 1.8;
+  max-width: 480px;
 }
 .mdash-hero-actions {
   position: relative;
@@ -2697,38 +2704,42 @@ tr:hover td {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 10px 18px;
+  padding: 11px 20px;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
   font-family: inherit;
   font-size: 0.88rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 .mdash-btn-primary {
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-contrast) 100%);
   color: #fff;
-  box-shadow: 0 4px 14px var(--accent-glow);
+  box-shadow: 0 6px 20px var(--accent-glow);
 }
 .mdash-btn-primary:hover {
-  background: var(--accent-contrast);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px var(--accent-glow);
+  filter: brightness(1.08);
 }
 .mdash-btn-ghost {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
   color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(8px);
 }
 .mdash-btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.28);
+  transform: translateY(-1px);
 }
 
 /* ---------- Stats ---------- */
 .mdash-stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 18px;
+  gap: 16px;
 }
 .mdash-stat {
   display: flex;
@@ -2736,54 +2747,74 @@ tr:hover td {
   gap: 16px;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 20px;
-  transition: all 0.25s ease;
+  border-radius: 16px;
+  padding: 22px 20px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+.mdash-stat::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 60%, var(--accent-glow) 100%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
 }
 .mdash-stat:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-lg);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
   border-color: var(--accent);
 }
+.mdash-stat:hover::after {
+  opacity: 1;
+}
 .mdash-stat-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: var(--radius-sm);
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  position: relative;
+  z-index: 1;
 }
 .mdash-stat-icon.primary-soft {
-  background: var(--accent-soft);
+  background: linear-gradient(135deg, var(--accent-soft), rgba(108, 92, 231, 0.18));
   color: var(--accent-contrast);
 }
 .mdash-stat-icon.green-soft {
-  background: rgba(34, 197, 94, 0.12);
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.06));
   color: var(--green);
 }
 .mdash-stat-icon.red-soft {
-  background: rgba(239, 68, 68, 0.12);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.06));
   color: var(--red);
 }
 .mdash-stat-icon.blue-soft {
-  background: rgba(59, 130, 246, 0.12);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.06));
   color: var(--info);
 }
 .mdash-stat-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
+  position: relative;
+  z-index: 1;
 }
 .mdash-stat-value {
-  font-size: 1.5rem;
-  font-weight: bold;
+  font-size: 1.6rem;
+  font-weight: 800;
   color: var(--text);
-  line-height: 1.2;
+  line-height: 1.15;
+  letter-spacing: -0.5px;
 }
 .mdash-stat-label {
   font-size: 0.82rem;
   color: var(--text-dim);
+  font-weight: 500;
 }
 .mdash-stat-trend {
   font-size: 0.74rem;
@@ -2813,9 +2844,10 @@ tr:hover td {
   flex-wrap: wrap;
 }
 .mdash-section-title h2 {
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   color: var(--text);
   margin-bottom: 2px;
+  font-weight: 800;
 }
 .mdash-section-title p {
   font-size: 0.82rem;
@@ -2834,19 +2866,20 @@ tr:hover td {
 }
 .mdash-search input {
   width: 260px;
-  padding: 10px 38px 10px 14px;
+  padding: 11px 40px 11px 16px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
   background: var(--card);
   color: var(--text);
   font-family: inherit;
   font-size: 0.85rem;
   outline: none;
-  transition: all 0.2s;
+  transition: all 0.25s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
 }
 .mdash-search input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-glow);
+  box-shadow: 0 0 0 4px var(--accent-glow);
 }
 .mdash-search input::placeholder {
   color: var(--text-faint);
@@ -2855,7 +2888,7 @@ tr:hover td {
 /* ---------- Tabs ---------- */
 .mdash-tabs {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   border-bottom: 1px solid var(--border);
   padding-bottom: 0;
 }
@@ -2863,26 +2896,29 @@ tr:hover td {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 10px 16px;
+  padding: 10px 18px;
   background: transparent;
   border: none;
-  border-bottom: 2px solid transparent;
+  border-bottom: 2.5px solid transparent;
   color: var(--text-dim);
   font-family: inherit;
   font-size: 0.88rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border-radius: 10px 10px 0 0;
+  margin-bottom: -1px;
 }
 .mdash-tab:hover {
   color: var(--text);
-  background: var(--card-2);
+  background: var(--accent-soft);
+  opacity: 0.8;
 }
 .mdash-tab.active {
   color: var(--accent);
   border-bottom-color: var(--accent);
   background: var(--accent-soft);
+  opacity: 1;
 }
 .mdash-tab-count {
   display: inline-flex;
@@ -2896,6 +2932,7 @@ tr:hover td {
   border: 1px solid var(--border);
   font-size: 0.72rem;
   color: var(--text-dim);
+  font-weight: 700;
 }
 .mdash-tab.active .mdash-tab-count {
   background: var(--accent);
@@ -2910,11 +2947,11 @@ tr:hover td {
 }
 .mdash-tab-dot.on {
   background: var(--green);
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
 }
 .mdash-tab-dot.off {
   background: var(--red);
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
 }
 
 /* ---------- Grid & Site Cards ---------- */
@@ -2930,16 +2967,17 @@ tr:hover td {
   flex-direction: column;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 16px;
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
 }
 .mdash-site-card:hover {
   border-color: var(--accent);
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-3px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.1);
+  transform: translateY(-5px);
 }
 .mdash-site-card.running {
   border-top: 3px solid var(--green);
@@ -2951,56 +2989,60 @@ tr:hover td {
 /* Cover */
 .mdash-site-cover {
   position: relative;
-  padding: 18px 18px 0;
-  background: var(--card-2);
+  padding: 20px 20px 0;
+  background:
+    radial-gradient(300px 140px at 90% -20%, var(--accent-glow), transparent 70%),
+    var(--card-2);
   border-bottom: 1px solid var(--border-soft);
   overflow: hidden;
 }
 .mdash-site-cover::after {
   content: "";
   position: absolute;
-  width: 120px;
-  height: 120px;
+  width: 140px;
+  height: 140px;
   border-radius: 50%;
   background: var(--accent-glow);
-  filter: blur(40px);
-  top: -50px;
-  left: -20px;
+  filter: blur(45px);
+  top: -55px;
+  left: -25px;
   pointer-events: none;
-  opacity: 0.5;
+  opacity: 0.6;
 }
 .mdash-site-cover-top {
   position: relative;
   z-index: 1;
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 14px;
 }
 .mdash-site-logo {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: var(--accent-soft);
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--accent-soft), rgba(108, 92, 231, 0.2));
   border: 1px solid var(--accent);
   color: var(--accent-contrast);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 4px 12px var(--accent-glow);
 }
 .mdash-site-title {
   flex: 1;
   min-width: 0;
-  padding-bottom: 14px;
+  padding-bottom: 16px;
 }
 .mdash-site-title h3 {
-  font-size: 0.98rem;
-  font-weight: bold;
+  font-size: 1rem;
+  font-weight: 800;
   color: var(--text);
   direction: ltr;
   text-align: right;
   word-break: break-all;
-  margin-bottom: 2px;
+  margin-bottom: 3px;
+  letter-spacing: -0.2px;
 }
 .mdash-site-domain {
   font-size: 0.78rem;
@@ -3022,9 +3064,9 @@ tr:hover td {
   align-items: center;
   gap: 6px;
   font-size: 0.74rem;
-  font-weight: 500;
-  padding: 5px 12px;
-  border-radius: 20px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 24px;
   white-space: nowrap;
   flex-shrink: 0;
   border: 1px solid var(--border);
@@ -3048,25 +3090,25 @@ tr:hover td {
 }
 .mdash-site-badge.running .mdash-site-badge-dot {
   background: var(--green);
-  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.7);
 }
 .mdash-site-badge.stopped .mdash-site-badge-dot {
   background: var(--red);
-  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.7);
 }
 
 /* Details */
 .mdash-site-details {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px 14px;
-  padding: 16px 18px;
+  gap: 12px 14px;
+  padding: 18px 20px;
   flex: 1;
 }
 .mdash-site-detail {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 .mdash-site-detail-icon {
   font-size: 0.9rem;
@@ -3074,11 +3116,12 @@ tr:hover td {
 .mdash-site-detail-label {
   font-size: 0.72rem;
   color: var(--text-faint);
+  font-weight: 500;
 }
 .mdash-site-detail-value {
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   color: var(--text);
-  font-weight: 500;
+  font-weight: 700;
 }
 .mdash-site-detail-value.ssl-ok {
   color: var(--green);
@@ -3094,18 +3137,18 @@ tr:hover td {
 .mdash-site-actions {
   display: flex;
   gap: 8px;
-  padding: 14px 18px;
+  padding: 16px 20px;
   border-top: 1px solid var(--border-soft);
   background: var(--card-2);
 }
 .mdash-site-btn {
   flex: 1;
-  padding: 9px 12px;
+  padding: 10px 12px;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 10px;
   font-family: inherit;
   font-size: 0.82rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
   display: inline-flex;
@@ -3113,11 +3156,13 @@ tr:hover td {
   justify-content: center;
 }
 .mdash-site-btn.manage {
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-contrast) 100%);
   color: #fff;
+  box-shadow: 0 4px 12px var(--accent-glow);
 }
 .mdash-site-btn.manage:hover {
-  background: var(--accent-contrast);
+  filter: brightness(1.1);
+  transform: translateY(-1px);
 }
 .mdash-site-btn.startstop {
   background: var(--card);
@@ -3127,6 +3172,7 @@ tr:hover td {
 .mdash-site-btn.startstop:hover {
   border-color: var(--accent);
   color: var(--accent);
+  background: var(--accent-soft);
 }
 .mdash-site-btn.delete {
   background: transparent;
@@ -3135,49 +3181,53 @@ tr:hover td {
 }
 .mdash-site-btn.delete:hover {
   background: rgba(239, 68, 68, 0.08);
-  border-color: var(--red);
+  border-color: rgba(239, 68, 68, 0.3);
 }
 .mdash-card {
   display: flex;
   flex-direction: column;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 16px;
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
 }
 .mdash-card:hover {
   border-color: var(--accent);
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-3px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.1);
+  transform: translateY(-5px);
 }
 .mdash-card-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 18px;
+  padding: 18px 20px;
   border-bottom: 1px solid var(--border-soft);
-  background: var(--card-2);
+  background:
+    radial-gradient(200px 80px at 90% -10%, var(--accent-glow), transparent 70%),
+    var(--card-2);
 }
 .mdash-card-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--accent-soft);
+  background: linear-gradient(135deg, var(--accent-soft), rgba(108, 92, 231, 0.2));
   color: var(--accent-contrast);
+  border: 1px solid var(--accent);
 }
 .mdash-card-status {
   display: inline-flex;
   align-items: center;
   gap: 7px;
   font-size: 0.78rem;
-  font-weight: 500;
-  padding: 5px 12px;
-  border-radius: 20px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 24px;
   background: var(--card);
   border: 1px solid var(--border);
   color: var(--text-dim);
@@ -3189,26 +3239,27 @@ tr:hover td {
 }
 .mdash-status-dot.on {
   background: var(--green);
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
 }
 .mdash-status-dot.off {
   background: var(--red);
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
 }
 .mdash-card-body {
-  padding: 18px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   flex: 1;
 }
 .mdash-card-name {
-  font-size: 1rem;
-  font-weight: bold;
+  font-size: 1.05rem;
+  font-weight: 800;
   color: var(--text);
   direction: ltr;
   text-align: right;
   word-break: break-all;
+  letter-spacing: -0.2px;
 }
 .mdash-card-domain {
   font-size: 0.82rem;
@@ -3242,11 +3293,12 @@ tr:hover td {
 .mdash-meta-label {
   font-size: 0.72rem;
   color: var(--text-faint);
+  font-weight: 500;
 }
 .mdash-meta-value {
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   color: var(--text);
-  font-weight: 500;
+  font-weight: 700;
 }
 .mdash-free {
   color: var(--green);
@@ -3260,27 +3312,29 @@ tr:hover td {
 .mdash-card-actions {
   display: flex;
   gap: 8px;
-  padding: 14px 18px;
+  padding: 16px 20px;
   border-top: 1px solid var(--border-soft);
   background: var(--card-2);
 }
 .mdash-action {
   flex: 1;
-  padding: 9px 12px;
+  padding: 10px 12px;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 10px;
   font-family: inherit;
   font-size: 0.82rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
 }
 .mdash-action.manage {
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-contrast) 100%);
   color: #fff;
+  box-shadow: 0 4px 12px var(--accent-glow);
 }
 .mdash-action.manage:hover {
-  background: var(--accent-contrast);
+  filter: brightness(1.1);
+  transform: translateY(-1px);
 }
 .mdash-action.toggle {
   background: var(--card);
@@ -3290,6 +3344,7 @@ tr:hover td {
 .mdash-action.toggle:hover {
   border-color: var(--accent);
   color: var(--accent);
+  background: var(--accent-soft);
 }
 .mdash-action.delete {
   background: transparent;
@@ -3298,7 +3353,7 @@ tr:hover td {
 }
 .mdash-action.delete:hover {
   background: rgba(239, 68, 68, 0.08);
-  border-color: var(--red);
+  border-color: rgba(239, 68, 68, 0.3);
 }
 
 /* ---------- Empty State ---------- */
@@ -3307,28 +3362,35 @@ tr:hover td {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 60px 20px;
+  gap: 10px;
+  padding: 70px 20px;
   text-align: center;
-  background: var(--card);
-  border: 1px dashed var(--border);
-  border-radius: var(--radius);
+  background:
+    radial-gradient(300px 150px at 50% 0%, var(--accent-glow), transparent 70%),
+    var(--card);
+  border: 2px dashed var(--border);
+  border-radius: 16px;
+  transition: border-color 0.3s;
+}
+.mdash-empty:hover {
+  border-color: var(--accent);
 }
 .mdash-empty-icon {
   color: var(--text-faint);
-  opacity: 0.6;
-  margin-bottom: 6px;
+  opacity: 0.5;
+  margin-bottom: 8px;
 }
 .mdash-empty h3 {
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   color: var(--text);
+  font-weight: 800;
 }
 .mdash-empty p {
   font-size: 0.85rem;
   color: var(--text-dim);
   line-height: 1.8;
   max-width: 380px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 /* ---------- Responsive ---------- */
@@ -3341,7 +3403,10 @@ tr:hover td {
   .mdash-hero {
     flex-direction: column;
     align-items: flex-start;
-    padding: 26px 22px;
+    padding: 28px 24px;
+  }
+  .mdash-hero-text h1 {
+    font-size: 1.5rem;
   }
   .mdash-hero-actions {
     width: 100%;
@@ -3358,11 +3423,11 @@ tr:hover td {
     gap: 12px;
   }
   .mdash-stat-icon {
-    width: 44px;
-    height: 44px;
+    width: 46px;
+    height: 46px;
   }
   .mdash-stat-value {
-    font-size: 1.25rem;
+    font-size: 1.3rem;
   }
   .mdash-section-head {
     flex-direction: column;
@@ -3373,6 +3438,7 @@ tr:hover td {
   }
   .mdash-tabs {
     overflow-x: auto;
+    padding-bottom: 2px;
   }
   .mdash-tab {
     white-space: nowrap;
