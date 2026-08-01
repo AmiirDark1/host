@@ -268,8 +268,10 @@ app.get("/api/instances/:instanceName/logs", authenticate, async (req, res) => {
 // =================================================================
 async function checkOwnership(req, instanceName) {
   if (req.user.role !== "admin") {
-    const instances = await dockerManager.listInstances(req.user.username);
-    const owns = instances.some((i) => i.instanceName === instanceName);
+    // بررسی مستقیم کانتینرها - حتی اگر یکی از کانتینرها حذف شده باشد،
+    // کاربر بتواند نمونه ناقص را پاک کند
+    const owns = await dockerManager.userOwnsContainer(`wp-${instanceName}`, req.user.username)
+      || await dockerManager.userOwnsContainer(`db-${instanceName}`, req.user.username);
     if (!owns) {
       throw new Error("You do not own this instance");
     }
@@ -284,6 +286,9 @@ app.delete("/api/instances/:instanceName", authenticate, async (req, res) => {
     const { instanceName } = req.params;
     await checkOwnership(req, instanceName);
     const result = await dockerManager.deleteInstance(instanceName);
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

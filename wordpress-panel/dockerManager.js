@@ -824,46 +824,67 @@ class DockerManager {
   // حذف کامل یک نمونه
   // =================================================================
   async deleteInstance(instanceName) {
-    try {
-      const containers = [
-        { name: `db-${instanceName}`, type: 'database' },
-        { name: `wp-${instanceName}`, type: 'wordpress' },
-      ];
+    const errors = [];
+    const containers = [
+      { name: `db-${instanceName}`, type: 'database' },
+      { name: `wp-${instanceName}`, type: 'wordpress' },
+    ];
 
-      for (const c of containers) {
-        try {
-          const container = docker.getContainer(c.name);
-          const info = await container.inspect();
+    for (const c of containers) {
+      try {
+        const container = docker.getContainer(c.name);
+        const info = await container.inspect();
 
-          // قطع اتصال از شبکه Nginx Proxy (برای کانتینر وردپرس)
-          if (c.type === 'wordpress') {
-            try {
-              const proxyNet = docker.getNetwork('nginx-proxy');
-              await proxyNet.disconnect({ Container: c.name, Force: true });
-            } catch (e) { /* ignore */ }
+        // قطع اتصال از شبکه Nginx Proxy (برای کانتینر وردپرس)
+        if (c.type === 'wordpress') {
+          try {
+            const proxyNet = docker.getNetwork('nginx-proxy');
+            await proxyNet.disconnect({ Container: c.name, Force: true });
+          } catch (e) {
+            if (e.statusCode !== 404) {
+              console.log(`   ⚠️ disconnect ${c.name} from nginx-proxy: ${e.message}`);
+            }
           }
+        }
 
-          await container.stop({ t: 5 }); // 5 ثانیه تایم‌اوت برای graceful shutdown
-          await container.remove({ v: true }); // حذف ولوم‌های مرتبط
-          console.log(`✅ Container ${c.name} removed`);
-        } catch (e) {
-          if (e.statusCode !== 404) console.error(`Error removing ${c.name}:`, e.message);
+        // ابتدا با تایم‌اوت کوتاه متوقف کن، اگر نشد force kill کن
+        try {
+          await container.stop({ t: 3 });
+        } catch (stopErr) {
+          if (stopErr.statusCode !== 304) {
+            try {
+              await container.kill();
+            } catch (killErr) { /* ignore */ }
+          }
+        }
+
+        // حذف با force برای اطمینان از حذف کامل + حذف ولوم‌ها
+        await container.remove({ v: true, force: true });
+        console.log(`✅ Container ${c.name} removed`);
+      } catch (e) {
+        if (e.statusCode !== 404) {
+          console.error(`❌ Error removing ${c.name}:`, e.message);
+          errors.push(`${c.name}: ${e.message}`);
         }
       }
-
-      // Clean up from in-memory map
-      for (const [key, value] of this.containers) {
-        if (value.instanceName === instanceName) {
-          this.containers.delete(key);
-          break;
-        }
-      }
-
-      return { success: true, message: 'Instance deleted successfully' };
-    } catch (err) {
-      console.error('Error deleting instance:', err);
-      throw err;
     }
+
+    // Clean up from in-memory map
+    for (const [key, value] of this.containers) {
+      if (value.instanceName === instanceName) {
+        this.containers.delete(key);
+      }
+    }
+
+    if (errors.length > 0) {
+      return {
+        success: false,
+        message: 'برخی کانتینرها حذف نشدند',
+        errors,
+      };
+    }
+
+    return { success: true, message: 'Instance deleted successfully' };
   }
 
   // =================================================================
@@ -926,35 +947,74 @@ class DockerManager {
         filters: { label: ['wp-managed=true'] },
       });
 
+      // جمع‌آوری کانتینرها بر اساس instance
       const instances = {};
+      const instanceKeys = new Set();
+
       for (const containerInfo of allContainers) {
         const labels = containerInfo.Labels;
-        const key = `${labels['wp-user']}-${labels['wp-instance']}`;
+        const instName = labels['wp-instance'];
+        const instUser = labels['wp-user'];
+        const key = `${instUser}-${instName}`;
 
         if (!instances[key]) {
           instances[key] = {
-            instanceName: labels['wp-instance'],
-            userId: labels['wp-user'],
+            instanceName: instName,
+            userId: instUser,
             domain: labels['wp-domain'] || null,
             status: 'unknown',
             wpContainerId: null,
             dbContainerId: null,
+            wpContainerState: null,
+            dbContainerState: null,
             url: labels['wp-domain'] ? `https://${labels['wp-domain']}` : null,
             serverIp: this.getServerIp(),
             sslStatus: 'checking',
             createdAt: null,
           };
+          instanceKeys.add(key);
+        }
+
+        // ذخیره domain اگر خالی بود
+        if (!instances[key].domain && labels['wp-domain']) {
+          instances[key].domain = labels['wp-domain'];
+          instances[key].url = `https://${labels['wp-domain']}`;
         }
 
         if (labels['wp-type'] === 'wordpress') {
           instances[key].wpContainerId = containerInfo.Id;
+          instances[key].wpContainerState = containerInfo.State;
           instances[key].status = containerInfo.State;
         } else if (labels['wp-type'] === 'database') {
           instances[key].dbContainerId = containerInfo.Id;
+          instances[key].dbContainerState = containerInfo.State;
         }
       }
 
       let result = Object.values(instances);
+
+      // فیلتر: فقط نمونه‌هایی که کانتینر وردپرس دارند و در حال اجرا هستند (یا حداقل وجود دارند)
+      // این کار باعث می‌شود نمونه‌های حذف‌ناقص (مثلاً فقط db باقی مانده) در پنل نمایش داده نشوند
+      result = result.filter(inst => inst.wpContainerId !== null);
+
+      // جلوگیری از نمایش دوباره: اگر دو instance با دامنه یکسان پیدا شد،
+      // نمونه‌ای که کانتینر wp آن running نیست را حذف کن
+      const seenDomains = new Map();
+      result = result.filter(inst => {
+        if (!inst.domain) return true;
+        if (!seenDomains.has(inst.domain)) {
+          seenDomains.set(inst.domain, inst);
+          return true;
+        }
+        // دامنه تکراری است - فقط نمونه running را نگه دار
+        const existing = seenDomains.get(inst.domain);
+        if (inst.status === 'running' && existing.status !== 'running') {
+          seenDomains.set(inst.domain, inst);
+          return true;
+        }
+        return false;
+      });
+
       if (userId) {
         result = result.filter(inst => inst.userId === userId);
       }
